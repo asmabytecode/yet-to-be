@@ -5,6 +5,8 @@ import { defineConfig } from 'vite';
 export default defineConfig({
   plugins: [react()],
   // Лише VITE_PUBLIC_* потрапляє у бандл. Секретів на фронті не буває.
+  // .env лежить у корені монорепо; Vite однаково експонує лише VITE_PUBLIC_*
+  envDir: '../../',
   envPrefix: 'VITE_PUBLIC_',
   server: {
     port: 5173,
