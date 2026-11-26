@@ -1,0 +1,102 @@
+// Схема БД YET TO BE (SQLite, локальний файл у apps/api/data).
+//
+// Принципи:
+// - PII (email, ім'я) зберігається ЛИШЕ зашифрованим (AES-256-GCM, Етап 4).
+//   Для пошуку за email — детермінований HMAC "blind index", а не відкритий текст.
+// - Пароль — лише argon2id-хеш (Етап 4); для Google-акаунтів passwordHash = NULL.
+// - Refresh-токени зберігаються лише як SHA-256 хеш (відкритий токен ніколи не потрапляє в БД).
+// - IP-адреси зберігаються лише як хеш (ipHash), не як відкритий текст.
+// - Enum-и замінено на String, щоб схема лишалась переносимою; допустимі значення
+//   перевіряються Zod/TypeScript-константами у коді.
+
+generator client {
+  provider     = "prisma-client"
+  output       = "../src/generated/prisma"
+  moduleFormat = "cjs"
+}
+
+datasource db {
+  provider = "sqlite"
+}
+
+model User {
+  id                   String    @id @default(uuid())
+  /// AES-256-GCM шифротекст email (формат: keyId.iv.tag.ciphertext)
+  emailEncrypted       String
+  /// HMAC-SHA256(BLIND_INDEX_KEY, normalizedEmail) — для пошуку й унікальності
+  emailBlindIndex      String    @unique
+  /// argon2id-хеш; NULL для акаунтів, створених лише через Google
+  passwordHash         String?
+  /// Зашифроване відображуване ім'я
+  displayNameEncrypted String?
+  /// "user" | "admin"
+  role                 String    @default("user")
+  emailVerifiedAt      DateTime?
+  lastLoginAt          DateTime?
+  createdAt            DateTime  @default(now())
+  updatedAt            DateTime  @updatedAt
+
+  oauthAccounts OAuthAccount[]
+  sessions      Session[]
+  auditLogs     AuditLog[]
+
+  @@map("users")
+}
+
+model OAuthAccount {
+  id                String   @id @default(uuid())
+  userId            String
+  /// Наприклад "google"
+  provider          String
+  /// Стабільний ідентифікатор користувача у провайдера (claim "sub")
+  providerAccountId String
+  createdAt         DateTime @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([provider, providerAccountId])
+  @@index([userId])
+  @@map("oauth_accounts")
+}
+
+model Session {
+  id               String    @id @default(uuid())
+  userId           String
+  /// Спільний для всього ланцюжка ротацій; дозволяє відкликати всю "родину" при повторному
+  /// використанні старого refresh-токена (reuse detection)
+  familyId         String
+  /// SHA-256 від refresh-токена
+  refreshTokenHash String    @unique
+  userAgent        String?
+  ipHash           String?
+  expiresAt        DateTime
+  revokedAt        DateTime?
+  /// id сесії, яка замінила цю під час ротації
+  replacedById     String?
+  createdAt        DateTime  @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([familyId])
+  @@index([expiresAt])
+  @@map("sessions")
+}
+
+model AuditLog {
+  id        String   @id @default(uuid())
+  /// NULL після видалення користувача (запис журналу зберігається)
+  userId    String?
+  /// Наприклад "auth.login.success", "auth.logout", "profile.update"
+  action    String
+  ipHash    String?
+  /// JSON-рядок з додатковими даними (без секретів і PII)
+  metadata  String?
+  createdAt DateTime @default(now())
+
+  user User? @relation(fields: [userId], references: [id], onDelete: SetNull)
+
+  @@index([userId, createdAt])
+  @@index([action])
+  @@map("audit_logs")
+}
