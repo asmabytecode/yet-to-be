@@ -1,0 +1,12 @@
+packages:
+  - "apps/*"
+  - "packages/*"
+
+# pnpm 10 блокує build-скрипти залежностей за замовчуванням.
+# Дозволяємо лише ті, що справді потрібні (нативні модулі).
+onlyBuiltDependencies:
+  - esbuild
+  - better-sqlite3
+  - argon2
+  - "@prisma/client"
+  - prisma

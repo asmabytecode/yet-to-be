@@ -1,0 +1,16 @@
+title = "YET TO BE gitleaks config"
+
+[extend]
+useDefault = true
+
+[[rules]]
+id = "yettobe-env-secret"
+description = "Hard-coded application secret"
+regex = '''(?i)(JWT_ACCESS_SECRET|PASSWORD_PEPPER|COOKIE_SECRET|BLIND_INDEX_KEY|GOOGLE_CLIENT_SECRET)\s*[=:]\s*['"]?(?!change-me)[A-Za-z0-9+/=_\-]{16,}'''
+tags = ["secret", "yettobe"]
+
+[allowlist]
+description = "Only the example env file may contain placeholders"
+paths = [
+  '''\.env\.example$''',
+]
