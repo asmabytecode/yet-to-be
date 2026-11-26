@@ -3,6 +3,7 @@ export default {
   test: {
     environment: 'node',
     include: ['src/**/*.spec.ts', 'test/**/*.spec.ts'],
+    setupFiles: ['./test/setup.ts'],
     coverage: {
       provider: 'v8',
       reporter: ['text', 'lcov'],

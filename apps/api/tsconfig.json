@@ -4,6 +4,6 @@
     "outDir": "./dist",
     "types": ["node"]
   },
-  "include": ["src", "test", "vitest.config.ts", "eslint.config.mjs"],
+  "include": ["src", "test", "prisma", "prisma.config.ts", "vitest.config.ts", "eslint.config.mjs"],
   "exclude": ["node_modules", "dist"]
 }

@@ -3,29 +3,44 @@
   "version": "0.0.0",
   "private": true,
   "scripts": {
-    "build": "nest build",
-    "dev": "nest start --watch",
+    "postinstall": "prisma generate",
+    "build": "prisma generate && nest build",
+    "dev": "prisma generate && nest start --watch",
     "start": "node dist/main.js",
     "lint": "eslint .",
     "typecheck": "tsc --noEmit",
-    "test": "vitest run"
+    "test": "vitest run",
+    "db:generate": "prisma generate",
+    "db:migrate:dev": "prisma migrate dev",
+    "db:migrate:deploy": "prisma migrate deploy",
+    "db:migrate:status": "prisma migrate status",
+    "db:seed": "prisma db seed",
+    "db:studio": "prisma studio",
+    "db:reset": "prisma migrate reset"
   },
   "dependencies": {
     "@nestjs/common": "^11.0.0",
     "@nestjs/config": "^4.0.0",
     "@nestjs/core": "^11.0.0",
     "@nestjs/platform-express": "^11.0.0",
+    "@prisma/adapter-better-sqlite3": "^7.0.0",
+    "@prisma/client": "^7.0.0",
+    "better-sqlite3": "^12.0.0",
     "reflect-metadata": "^0.2.0",
     "rxjs": "^7.8.0",
     "zod": "^4.0.0"
   },
   "devDependencies": {
     "@nestjs/cli": "^11.0.0",
+    "@types/better-sqlite3": "^7.6.0",
     "@types/express": "^5.0.0",
     "@types/node": "^22.0.0",
     "@yet-to-be/eslint-config": "workspace:*",
-    "eslint": "^9.0.0",
     "@yet-to-be/tsconfig": "workspace:*",
+    "dotenv": "^17.0.0",
+    "eslint": "^9.0.0",
+    "prisma": "^7.0.0",
+    "tsx": "^4.0.0",
     "typescript": "^5.6.0",
     "vitest": "^3.0.0"
   }

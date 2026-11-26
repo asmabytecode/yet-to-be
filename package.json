@@ -16,6 +16,12 @@
     "test:e2e": "turbo run test:e2e",
     "format": "prettier --write .",
     "format:check": "prettier --check .",
+    "db:generate": "pnpm --filter api db:generate",
+    "db:migrate": "pnpm --filter api db:migrate:dev",
+    "db:migrate:deploy": "pnpm --filter api db:migrate:deploy",
+    "db:seed": "pnpm --filter api db:seed",
+    "db:studio": "pnpm --filter api db:studio",
+    "db:reset": "pnpm --filter api db:reset",
     "secrets:generate": "node scripts/generate-secrets.mjs",
     "secrets:scan": "gitleaks detect --source . --config .gitleaks.toml --no-banner",
     "prepare": "husky"
