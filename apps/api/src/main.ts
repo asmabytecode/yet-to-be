@@ -1,11 +1,12 @@
 import 'reflect-metadata';
 import { NestFactory } from '@nestjs/core';
 import { AppModule } from './app.module';
+import { AppConfigService } from './config/app-config.service';
 
 async function bootstrap(): Promise<void> {
   const app = await NestFactory.create(AppModule);
-  // Порт тимчасово хардкодом; з Етапу 2 береться з AppConfigService.
-  await app.listen(3000, '0.0.0.0');
+  const config = app.get(AppConfigService);
+  await app.listen(config.app.port, '0.0.0.0');
 }
 
 void bootstrap();

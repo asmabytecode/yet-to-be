@@ -7,7 +7,7 @@ export default {
       provider: 'v8',
       reporter: ['text', 'lcov'],
       include: ['src/**/*.ts'],
-      exclude: ['src/main.ts', 'src/generated/**'],
+      exclude: ['src/main.ts', 'src/generated/**', 'src/**/*.fixture.ts'],
     },
   },
 };
