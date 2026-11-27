@@ -25,6 +25,11 @@ ENV VITE_PUBLIC_APP_NAME=${VITE_PUBLIC_APP_NAME}
 RUN pnpm --filter "web..." run build
 
 FROM ${NGINX_IMAGE} AS runtime
+# Підтягуємо виправлення ОС-пакетів, випущені після збирання базового образу (Trivy: CRITICAL з fix).
+# Це робиться від root, далі образ повертається на непривілейований uid 101.
+USER root
+RUN apk upgrade --no-cache
+USER 101
 # Образ nginx-unprivileged працює від uid 101 і слухає 8080.
 COPY infra/nginx/default.conf /etc/nginx/conf.d/default.conf
 COPY infra/nginx/snippets/ /etc/nginx/snippets/
