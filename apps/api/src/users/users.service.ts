@@ -91,7 +91,11 @@ export class UsersService {
     return this.toDto(await this.requireUser(userId));
   }
 
-  async updateProfile(userId: string, input: UpdateProfileInput, ctx: ClientContext): Promise<UserDto> {
+  async updateProfile(
+    userId: string,
+    input: UpdateProfileInput,
+    ctx: ClientContext,
+  ): Promise<UserDto> {
     await this.requireUser(userId);
     const update: ProfileUpdate = {};
     if (input.displayName !== undefined) update.displayName = input.displayName;
@@ -122,7 +126,11 @@ export class UsersService {
     }
     if (!(await this.passwords.verify(user.passwordHash, input.currentPassword))) {
       // 400, а не 401: фронтенд на 401 намагається оновити токен.
-      throw new AppException(400, ERROR_CODES.AUTH_INVALID_CREDENTIALS, 'Current password is incorrect');
+      throw new AppException(
+        400,
+        ERROR_CODES.AUTH_INVALID_CREDENTIALS,
+        'Current password is incorrect',
+      );
     }
     assertStrongPassword(input.newPassword, this.decryptEmail(user));
 
@@ -158,7 +166,11 @@ export class UsersService {
     await this.record(USER_AUDIT.OAUTH_UNLINKED, userId, ctx, { provider: 'google' });
   }
 
-  async listSessions(userId: string, currentSessionId: string, now = new Date()): Promise<SessionInfo[]> {
+  async listSessions(
+    userId: string,
+    currentSessionId: string,
+    now = new Date(),
+  ): Promise<SessionInfo[]> {
     const sessions = await this.sessions.listActiveForUser(userId, now);
     return sessions.map((session) => ({
       id: session.id,
@@ -170,8 +182,15 @@ export class UsersService {
   }
 
   /** Чужа або неіснуюча сесія → 404 (а не 403), щоб не підтверджувати існування id (IDOR). */
-  async revokeSession(userId: string, sessionId: string, ctx: ClientContext, now = new Date()): Promise<void> {
-    const owned = (await this.sessions.listActiveForUser(userId, now)).some((s) => s.id === sessionId);
+  async revokeSession(
+    userId: string,
+    sessionId: string,
+    ctx: ClientContext,
+    now = new Date(),
+  ): Promise<void> {
+    const owned = (await this.sessions.listActiveForUser(userId, now)).some(
+      (s) => s.id === sessionId,
+    );
     if (!owned) throw new AppException(404, ERROR_CODES.NOT_FOUND, 'Not found');
     await this.sessions.revoke(sessionId, now);
     await this.record(USER_AUDIT.SESSION_REVOKED, userId, ctx);
@@ -179,7 +198,8 @@ export class UsersService {
 
   private async requireUser(userId: string): Promise<User> {
     const user = await this.users.findById(userId);
-    if (user === null) throw new AppException(401, ERROR_CODES.UNAUTHORIZED, 'Authentication required');
+    if (user === null)
+      throw new AppException(401, ERROR_CODES.UNAUTHORIZED, 'Authentication required');
     return user;
   }
 

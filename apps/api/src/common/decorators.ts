@@ -11,10 +11,12 @@ export const Public = (): MethodDecorator & ClassDecorator => SetMetadata(IS_PUB
 export const SkipCsrf = (): MethodDecorator & ClassDecorator => SetMetadata(SKIP_CSRF_KEY, true);
 
 /** Поточний користувач із запиту. Доступний лише на захищених маршрутах. */
-export const CurrentUser = createParamDecorator((_data: unknown, ctx: ExecutionContext): AuthUser => {
-  const user = ctx.switchToHttp().getRequest<AppRequest>().user;
-  if (user === undefined) {
-    throw new Error('CurrentUser used on a route without an authenticated user.');
-  }
-  return user;
-});
+export const CurrentUser = createParamDecorator(
+  (_data: unknown, ctx: ExecutionContext): AuthUser => {
+    const user = ctx.switchToHttp().getRequest<AppRequest>().user;
+    if (user === undefined) {
+      throw new Error('CurrentUser used on a route without an authenticated user.');
+    }
+    return user;
+  },
+);

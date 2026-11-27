@@ -31,7 +31,9 @@ export function PasswordForm({ hasPassword }: { hasPassword: boolean }) {
     formState: { errors },
   } = useForm<Values>({
     // Для "встановити" поля currentPassword немає — окрема схема без нього.
-    resolver: zodResolver(hasPassword ? changePasswordSchema : setPasswordSchema) as unknown as Resolver<Values>,
+    resolver: zodResolver(
+      hasPassword ? changePasswordSchema : setPasswordSchema,
+    ) as unknown as Resolver<Values>,
     defaultValues: { currentPassword: '', newPassword: '' },
   });
 
@@ -69,7 +71,9 @@ export function PasswordForm({ hasPassword }: { hasPassword: boolean }) {
         })(event);
       }}
     >
-      {hasPassword ? null : <p className="text-sm text-slate-600">{t('profile.setPasswordHint')}</p>}
+      {hasPassword ? null : (
+        <p className="text-sm text-slate-600">{t('profile.setPasswordHint')}</p>
+      )}
       <FormError message={formError} />
       {hasPassword ? (
         <Field

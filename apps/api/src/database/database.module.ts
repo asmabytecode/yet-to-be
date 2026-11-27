@@ -5,7 +5,12 @@ import { OAuthAccountsRepository } from './repositories/oauth-accounts.repositor
 import { SessionsRepository } from './repositories/sessions.repository';
 import { UsersRepository } from './repositories/users.repository';
 
-const repositories = [UsersRepository, OAuthAccountsRepository, SessionsRepository, AuditLogRepository];
+const repositories = [
+  UsersRepository,
+  OAuthAccountsRepository,
+  SessionsRepository,
+  AuditLogRepository,
+];
 
 @Module({
   providers: [PrismaService, ...repositories],

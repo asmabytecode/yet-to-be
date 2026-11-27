@@ -6,8 +6,20 @@ import { API, mockSession, renderApp, USER } from '../../test/render-app';
 import { changedFields } from './profile-form';
 
 const SESSIONS = [
-  { id: 's1', createdAt: '2026-01-01T00:00:00.000Z', lastUsedAt: '2026-01-02T00:00:00.000Z', userAgent: 'Firefox', isCurrent: true },
-  { id: 's2', createdAt: '2026-01-01T00:00:00.000Z', lastUsedAt: '2026-01-01T00:00:00.000Z', userAgent: '<b>Evil</b>', isCurrent: false },
+  {
+    id: 's1',
+    createdAt: '2026-01-01T00:00:00.000Z',
+    lastUsedAt: '2026-01-02T00:00:00.000Z',
+    userAgent: 'Firefox',
+    isCurrent: true,
+  },
+  {
+    id: 's2',
+    createdAt: '2026-01-01T00:00:00.000Z',
+    lastUsedAt: '2026-01-01T00:00:00.000Z',
+    userAgent: '<b>Evil</b>',
+    isCurrent: false,
+  },
 ];
 
 function profileHandlers() {

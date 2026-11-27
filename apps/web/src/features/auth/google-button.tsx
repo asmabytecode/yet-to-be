@@ -5,7 +5,10 @@ import { linkButtonClass } from '../../shared/ui/button';
 export function GoogleButton({ returnTo = '/', label }: { returnTo?: string; label?: string }) {
   const { t } = useTranslation();
   return (
-    <a href={`/api/v1/auth/google?returnTo=${encodeURIComponent(returnTo)}`} className={`${linkButtonClass()} w-full`}>
+    <a
+      href={`/api/v1/auth/google?returnTo=${encodeURIComponent(returnTo)}`}
+      className={`${linkButtonClass()} w-full`}
+    >
       {label ?? t('auth.google')}
     </a>
   );

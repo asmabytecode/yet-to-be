@@ -8,7 +8,10 @@ import { resolveSqliteUrl } from './src/database/sqlite-url';
 loadEnv({ path: path.resolve(process.cwd(), '../../.env'), quiet: true });
 
 // Той самий резолвер шляху, що й у PrismaService: CLI і застосунок завжди бачать один файл.
-const databaseUrl = resolveSqliteUrl(process.env.DATABASE_URL ?? 'file:./data/yettobe.db', process.cwd());
+const databaseUrl = resolveSqliteUrl(
+  process.env.DATABASE_URL ?? 'file:./data/yettobe.db',
+  process.cwd(),
+);
 
 export default defineConfig({
   schema: 'prisma/schema.prisma',

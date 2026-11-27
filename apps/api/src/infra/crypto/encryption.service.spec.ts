@@ -92,7 +92,9 @@ describe('EncryptionService', () => {
 
   it('refuses keys of the wrong size or ids with unsafe characters', () => {
     // 16 байтів у base64: пройде regex схеми env лише в обхід, тому перевіряємо напряму сервіс.
-    const tooShort = { crypto: { keys: { k1: randomBytes(16).toString('base64') }, activeKeyId: 'k1' } };
+    const tooShort = {
+      crypto: { keys: { k1: randomBytes(16).toString('base64') }, activeKeyId: 'k1' },
+    };
     expect(() => new EncryptionService(tooShort as never)).toThrow('exactly 32 bytes');
 
     const badId = { crypto: { keys: { 'a:b': key32() }, activeKeyId: 'a:b' } };

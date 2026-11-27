@@ -11,7 +11,8 @@ interface FieldProps extends InputHTMLAttributes<HTMLInputElement> {
 
 /** Текст помилки: серверна несе готове повідомлення, клієнтська — тип проблеми zod. */
 function messageFor(error: FieldError, t: (key: string) => string): string {
-  if (error.type === 'server' && error.message !== undefined && error.message !== '') return error.message;
+  if (error.type === 'server' && error.message !== undefined && error.message !== '')
+    return error.message;
   const key = `validation.${error.type}`;
   const translated = t(key);
   return translated === key ? t('validation.unknown') : translated;

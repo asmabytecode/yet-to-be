@@ -138,7 +138,11 @@ export class AuthService {
   }
 
   /** Вихід за refresh-токеном (працює, навіть якщо access уже прострочений). */
-  async logout(rawRefreshToken: string | undefined, ctx: ClientContext, now = new Date()): Promise<void> {
+  async logout(
+    rawRefreshToken: string | undefined,
+    ctx: ClientContext,
+    now = new Date(),
+  ): Promise<void> {
     if (rawRefreshToken === undefined) return;
     const session = await this.sessions.findByTokenHash(this.hashing.sha256(rawRefreshToken));
     if (session === null) return;

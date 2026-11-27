@@ -20,8 +20,16 @@ export const routes: RouteObject[] = [
       {
         element: <GuestRoute />,
         children: [
-          { path: '/login', lazy: async () => ({ Component: (await import('../pages/login-page')).LoginPage }) },
-          { path: '/register', lazy: async () => ({ Component: (await import('../pages/register-page')).RegisterPage }) },
+          {
+            path: '/login',
+            lazy: async () => ({ Component: (await import('../pages/login-page')).LoginPage }),
+          },
+          {
+            path: '/register',
+            lazy: async () => ({
+              Component: (await import('../pages/register-page')).RegisterPage,
+            }),
+          },
         ],
       },
       {
@@ -30,13 +38,24 @@ export const routes: RouteObject[] = [
           {
             element: <AppLayout />,
             children: [
-              { path: '/', lazy: async () => ({ Component: (await import('../pages/home-page')).HomePage }) },
-              { path: '/profile', lazy: async () => ({ Component: (await import('../pages/profile-page')).ProfilePage }) },
+              {
+                path: '/',
+                lazy: async () => ({ Component: (await import('../pages/home-page')).HomePage }),
+              },
+              {
+                path: '/profile',
+                lazy: async () => ({
+                  Component: (await import('../pages/profile-page')).ProfilePage,
+                }),
+              },
             ],
           },
         ],
       },
-      { path: '*', lazy: async () => ({ Component: (await import('../pages/not-found-page')).NotFoundPage }) },
+      {
+        path: '*',
+        lazy: async () => ({ Component: (await import('../pages/not-found-page')).NotFoundPage }),
+      },
     ],
   },
 ];

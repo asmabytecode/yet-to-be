@@ -1,6 +1,12 @@
 import { mkdirSync } from 'node:fs';
 import { dirname } from 'node:path';
-import { Inject, Injectable, Logger, type OnModuleDestroy, type OnModuleInit } from '@nestjs/common';
+import {
+  Inject,
+  Injectable,
+  Logger,
+  type OnModuleDestroy,
+  type OnModuleInit,
+} from '@nestjs/common';
 import { PrismaBetterSqlite3 } from '@prisma/adapter-better-sqlite3';
 import { AppConfigService } from '../config/app-config.service';
 import { PrismaClient } from '../generated/prisma/client';

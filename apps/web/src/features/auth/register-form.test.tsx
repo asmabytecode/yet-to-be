@@ -25,7 +25,9 @@ describe('RegisterForm', () => {
 
   it('успішна реєстрація веде на головну', async () => {
     mockSession(null);
-    server.use(http.post(`*${API}/auth/register`, () => HttpResponse.json({ user: USER }, { status: 201 })));
+    server.use(
+      http.post(`*${API}/auth/register`, () => HttpResponse.json({ user: USER }, { status: 201 })),
+    );
     const { user } = renderApp('/register');
 
     await user.type(await screen.findByLabelText("Ім'я"), 'Ада');

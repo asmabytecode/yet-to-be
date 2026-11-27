@@ -9,9 +9,17 @@ const config = createTestConfig();
 const CLIENT_ID = config.google.clientId;
 
 describe('GoogleOAuthProvider', () => {
-  let sign: (claims: Record<string, unknown>, overrides?: { iss?: string; aud?: string; exp?: string }) => Promise<string>;
+  let sign: (
+    claims: Record<string, unknown>,
+    overrides?: { iss?: string; aud?: string; exp?: string },
+  ) => Promise<string>;
   let jwks: ReturnType<typeof createLocalJWKSet>;
-  const tx: OAuthTransaction = { state: 's', nonce: 'nonce-1', codeVerifier: 'verifier-1', returnTo: '/' };
+  const tx: OAuthTransaction = {
+    state: 's',
+    nonce: 'nonce-1',
+    codeVerifier: 'verifier-1',
+    returnTo: '/',
+  };
 
   beforeAll(async () => {
     const { publicKey, privateKey } = await generateKeyPair('RS256');
@@ -38,7 +46,12 @@ describe('GoogleOAuthProvider', () => {
     return { provider: new GoogleOAuthProvider(config, { fetch: fetchMock, jwks }), fetchMock };
   };
 
-  const goodClaims = { email: 'ada@example.com', email_verified: true, name: 'Ada', nonce: 'nonce-1' };
+  const goodClaims = {
+    email: 'ada@example.com',
+    email_verified: true,
+    name: 'Ada',
+    nonce: 'nonce-1',
+  };
 
   it('builds an authorization URL with state, nonce and PKCE S256', () => {
     const { provider } = providerWith(() => sign(goodClaims));
@@ -99,7 +112,11 @@ describe('GoogleOAuthProvider', () => {
   });
 
   it('rejects wrong audience, issuer and expired tokens', async () => {
-    for (const overrides of [{ aud: 'someone-else' }, { iss: 'https://evil.example' }, { exp: '-1m' }]) {
+    for (const overrides of [
+      { aud: 'someone-else' },
+      { iss: 'https://evil.example' },
+      { exp: '-1m' },
+    ]) {
       const { provider } = providerWith(() => sign(goodClaims, overrides));
       await expect(provider.handleCallback('c', tx)).rejects.toThrow(OAuthError);
     }
@@ -124,9 +141,9 @@ describe('GoogleOAuthProvider', () => {
   });
 
   it('fails cleanly when the token endpoint errors, is unreachable or sends no id_token', async () => {
-    await expect(providerWith(() => sign(goodClaims), 400).provider.handleCallback('c', tx)).rejects.toThrow(
-      OAuthError,
-    );
+    await expect(
+      providerWith(() => sign(goodClaims), 400).provider.handleCallback('c', tx),
+    ).rejects.toThrow(OAuthError);
 
     const unreachable = new GoogleOAuthProvider(config, {
       fetch: () => Promise.reject(new Error('offline')),

@@ -1,4 +1,10 @@
-import { type ArgumentsHost, Catch, type ExceptionFilter, HttpException, Logger } from '@nestjs/common';
+import {
+  type ArgumentsHost,
+  Catch,
+  type ExceptionFilter,
+  HttpException,
+  Logger,
+} from '@nestjs/common';
 import { type ApiError, ERROR_CODES, type ErrorCode } from '@yet-to-be/shared';
 import type { Request, Response } from 'express';
 import { AppException } from './app-exception';
@@ -18,10 +24,11 @@ export function buildErrorBody(
   requestId: string,
   override?: { code: ErrorCode; message: string; issues?: ApiError['issues'] },
 ): ApiError {
-  const base = override ?? GENERIC[status] ?? {
-    code: status >= 500 ? ERROR_CODES.INTERNAL_ERROR : ERROR_CODES.BAD_REQUEST,
-    message: status >= 500 ? 'Internal server error' : 'Request failed',
-  };
+  const base = override ??
+    GENERIC[status] ?? {
+      code: status >= 500 ? ERROR_CODES.INTERNAL_ERROR : ERROR_CODES.BAD_REQUEST,
+      message: status >= 500 ? 'Internal server error' : 'Request failed',
+    };
   const body: ApiError = { statusCode: status, code: base.code, message: base.message, requestId };
   if (override?.issues !== undefined) body.issues = override.issues;
   return body;

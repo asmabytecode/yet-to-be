@@ -19,7 +19,10 @@ describe('PasswordService', () => {
   });
 
   it('salts every hash', async () => {
-    const [a, b] = await Promise.all([service.hash('same password'), service.hash('same password')]);
+    const [a, b] = await Promise.all([
+      service.hash('same password'),
+      service.hash('same password'),
+    ]);
     expect(a).not.toBe(b);
   });
 
@@ -34,7 +37,12 @@ describe('PasswordService', () => {
   });
 
   it('needsRehash is true for weaker parameters and false for current ones', async () => {
-    const weak = await hash('password', { type: argon2id, memoryCost: 4096, timeCost: 1, parallelism: 1 });
+    const weak = await hash('password', {
+      type: argon2id,
+      memoryCost: 4096,
+      timeCost: 1,
+      parallelism: 1,
+    });
     expect(service.needsRehash(weak)).toBe(true);
     expect(service.needsRehash(await service.hash('password'))).toBe(false);
   });

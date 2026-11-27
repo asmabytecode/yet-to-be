@@ -45,9 +45,12 @@ export function SessionsList() {
           <li key={session.id} className="flex items-center justify-between gap-4 py-3">
             <div className="min-w-0 text-sm">
               {/* userAgent — недовірений рядок із запиту; React екранує його як текст */}
-              <p className="truncate font-medium">{session.userAgent ?? t('profile.unknownDevice')}</p>
+              <p className="truncate font-medium">
+                {session.userAgent ?? t('profile.unknownDevice')}
+              </p>
               <p className="text-slate-600">
-                {t('profile.startedAt')}: {new Date(session.lastUsedAt).toLocaleString(i18n.language)}
+                {t('profile.startedAt')}:{' '}
+                {new Date(session.lastUsedAt).toLocaleString(i18n.language)}
                 {session.isCurrent ? ` · ${t('profile.current')}` : ''}
               </p>
             </div>

@@ -1,5 +1,10 @@
 import { describe, expect, it } from 'vitest';
-import { changePasswordSchema, safeReturnTo, setPasswordSchema, updateProfileSchema } from './users';
+import {
+  changePasswordSchema,
+  safeReturnTo,
+  setPasswordSchema,
+  updateProfileSchema,
+} from './users';
 
 describe('updateProfileSchema', () => {
   it('accepts allowed fields and trims them', () => {
@@ -11,7 +16,9 @@ describe('updateProfileSchema', () => {
 
   it('rejects unknown fields (mass assignment)', () => {
     for (const field of ['email', 'passwordHash', 'id', 'status']) {
-      expect(updateProfileSchema.safeParse({ displayName: 'Ada', [field]: 'x' }).success).toBe(false);
+      expect(updateProfileSchema.safeParse({ displayName: 'Ada', [field]: 'x' }).success).toBe(
+        false,
+      );
     }
   });
 
@@ -32,15 +39,22 @@ describe('updateProfileSchema', () => {
 describe('password schemas', () => {
   it('requires a different new password', () => {
     const same = 'correct horse battery';
-    expect(changePasswordSchema.safeParse({ currentPassword: same, newPassword: same }).success).toBe(false);
     expect(
-      changePasswordSchema.safeParse({ currentPassword: same, newPassword: 'another long password' }).success,
+      changePasswordSchema.safeParse({ currentPassword: same, newPassword: same }).success,
+    ).toBe(false);
+    expect(
+      changePasswordSchema.safeParse({
+        currentPassword: same,
+        newPassword: 'another long password',
+      }).success,
     ).toBe(true);
   });
 
   it('enforces the password policy on new passwords', () => {
     expect(setPasswordSchema.safeParse({ newPassword: 'short' }).success).toBe(false);
-    expect(setPasswordSchema.safeParse({ newPassword: 'long enough password', x: 1 }).success).toBe(false);
+    expect(setPasswordSchema.safeParse({ newPassword: 'long enough password', x: 1 }).success).toBe(
+      false,
+    );
   });
 });
 

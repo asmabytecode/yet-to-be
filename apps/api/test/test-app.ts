@@ -73,7 +73,11 @@ export interface AuthSession {
 }
 
 /** Реєстрація нового користувача; повертає браузерну сесію й актуальний CSRF-токен. */
-export async function signUp(t: TestApp, address: string, password = PASSWORD): Promise<AuthSession> {
+export async function signUp(
+  t: TestApp,
+  address: string,
+  password = PASSWORD,
+): Promise<AuthSession> {
   const agent = t.agent();
   const token = await csrfToken(agent);
   const res = await agent
@@ -84,7 +88,11 @@ export async function signUp(t: TestApp, address: string, password = PASSWORD): 
 }
 
 /** Вхід існуючого користувача в новій браузерній сесії. */
-export async function signIn(t: TestApp, address: string, password = PASSWORD): Promise<AuthSession> {
+export async function signIn(
+  t: TestApp,
+  address: string,
+  password = PASSWORD,
+): Promise<AuthSession> {
   const agent = t.agent();
   const token = await csrfToken(agent);
   const res = await agent

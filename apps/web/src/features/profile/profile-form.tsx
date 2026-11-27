@@ -45,7 +45,10 @@ export function ProfileForm({ user }: { user: UserDto }) {
     reset,
     setError,
     formState: { errors },
-  } = useForm<FormValues>({ resolver: zodResolver(updateProfileSchema) as unknown as Resolver<FormValues>, defaultValues: initial });
+  } = useForm<FormValues>({
+    resolver: zodResolver(updateProfileSchema) as unknown as Resolver<FormValues>,
+    defaultValues: initial,
+  });
 
   const update = useMutation({
     mutationFn: profileApi.update,
@@ -79,9 +82,23 @@ export function ProfileForm({ user }: { user: UserDto }) {
       <p className="text-sm text-slate-600">
         {t('profile.email')}: <span className="font-medium">{user.email}</span>
       </p>
-      <Field label={t('profile.displayName')} error={errors.displayName} {...register('displayName')} />
-      <Field label={t('profile.firstName')} autoComplete="given-name" error={errors.firstName} {...register('firstName')} />
-      <Field label={t('profile.lastName')} autoComplete="family-name" error={errors.lastName} {...register('lastName')} />
+      <Field
+        label={t('profile.displayName')}
+        error={errors.displayName}
+        {...register('displayName')}
+      />
+      <Field
+        label={t('profile.firstName')}
+        autoComplete="given-name"
+        error={errors.firstName}
+        {...register('firstName')}
+      />
+      <Field
+        label={t('profile.lastName')}
+        autoComplete="family-name"
+        error={errors.lastName}
+        {...register('lastName')}
+      />
       <TextAreaField label={t('profile.bio')} error={errors.bio} {...register('bio')} />
       <Button type="submit" disabled={update.isPending}>
         {update.isPending ? t('profile.saving') : t('profile.save')}

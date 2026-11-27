@@ -17,7 +17,10 @@ describe('SessionsRepository', () => {
   const now = new Date('2026-06-01T12:00:00.000Z');
   const inFuture = new Date('2026-07-01T12:00:00.000Z');
 
-  const input = (hash: string, overrides: Partial<CreateSessionInput> = {}): CreateSessionInput => ({
+  const input = (
+    hash: string,
+    overrides: Partial<CreateSessionInput> = {},
+  ): CreateSessionInput => ({
     userId,
     familyId: 'family-1',
     refreshTokenHash: hash,
