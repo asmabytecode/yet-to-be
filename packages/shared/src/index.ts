@@ -1,6 +1,7 @@
 import { z } from 'zod';
 
 export * from './auth';
+export * from './users';
 
 /** Назва застосунку — спільна для API і web. */
 export const APP_NAME = 'YET TO BE';
