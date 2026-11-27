@@ -13,9 +13,23 @@ export interface CreateUserInput {
   /** null для акаунтів, створених лише через Google. */
   passwordHash: string | null;
   displayName: string;
+  /** Для акаунтів, створених через Google (email підтверджено провайдером). */
+  emailVerifiedAt?: Date;
 }
 
-interface UserUpdate {
+export interface OAuthLinkInput {
+  provider: string;
+  providerAccountId: string;
+}
+
+export interface ProfileUpdate {
+  displayName?: string;
+  firstNameEncrypted?: string | null;
+  lastNameEncrypted?: string | null;
+  bio?: string | null;
+}
+
+interface UserUpdate extends ProfileUpdate {
   displayName?: string;
   emailEncrypted?: string;
   emailBlindIndex?: string;
@@ -61,6 +75,27 @@ export class UsersRepository {
     }
   }
 
+  /** Створює Google-користувача, його першу сесію та зв'язок з провайдером в одній транзакції. */
+  async createOAuthUser(
+    input: CreateUserInput,
+    session: Omit<CreateSessionInput, 'userId'>,
+    oauth: OAuthLinkInput,
+  ): Promise<{ user: User; session: Session }> {
+    try {
+      return await this.prisma.$transaction(async (tx) => {
+        const user = await tx.user.create({ data: input });
+        const createdSession = await tx.session.create({ data: { ...session, userId: user.id } });
+        await tx.oAuthAccount.create({ data: { ...oauth, userId: user.id } });
+        return { user, session: createdSession };
+      });
+    } catch (error) {
+      if (isUniqueViolation(error)) {
+        throw new UniqueConstraintError('email');
+      }
+      throw error;
+    }
+  }
+
   findById(id: string): Promise<User | null> {
     return this.prisma.user.findUnique({ where: { id } });
   }
@@ -71,6 +106,10 @@ export class UsersRepository {
 
   updateDisplayName(id: string, displayName: string): Promise<User> {
     return this.update(id, { displayName });
+  }
+
+  updateProfile(id: string, update: ProfileUpdate): Promise<User> {
+    return this.update(id, update);
   }
 
   updateEmail(id: string, emailEncrypted: string, emailBlindIndex: string): Promise<User> {

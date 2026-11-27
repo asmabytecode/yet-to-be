@@ -2,6 +2,7 @@ import { randomUUID } from 'node:crypto';
 import { Inject, Injectable } from '@nestjs/common';
 import { ERROR_CODES, type LoginInput, type RegisterInput, type UserDto } from '@yet-to-be/shared';
 import { AppException } from '../common/app-exception';
+import { assertStrongPassword } from '../common/password-policy';
 import type { ClientContext } from '../common/request-context';
 import { AppConfigService } from '../config/app-config.service';
 import { UniqueConstraintError } from '../database/errors';
@@ -10,13 +11,11 @@ import type { CreateSessionInput } from '../database/repositories/sessions.repos
 import { SessionsRepository } from '../database/repositories/sessions.repository';
 import { UsersRepository } from '../database/repositories/users.repository';
 import type { Session, User } from '../generated/prisma/client';
-import { EncryptionService } from '../infra/crypto/encryption.service';
 import { HashingService } from '../infra/crypto/hashing.service';
 import { PasswordService } from '../infra/crypto/password.service';
 import { UsersService } from '../users/users.service';
 import type { SessionTokens } from './auth-cookies';
 import { AUDIT } from './audit-actions';
-import { isCommonPassword } from './common-passwords';
 import { TokenService } from './token.service';
 
 export const MAX_FAILED_LOGINS = 5;
@@ -43,7 +42,6 @@ export class AuthService {
     @Inject(SessionsRepository) private readonly sessions: SessionsRepository,
     @Inject(AuditLogRepository) private readonly audit: AuditLogRepository,
     @Inject(PasswordService) private readonly passwords: PasswordService,
-    @Inject(EncryptionService) private readonly encryption: EncryptionService,
     @Inject(HashingService) private readonly hashing: HashingService,
     @Inject(TokenService) private readonly tokens: TokenService,
     @Inject(UsersService) private readonly usersService: UsersService,
@@ -53,30 +51,22 @@ export class AuthService {
   }
 
   async register(input: RegisterInput, ctx: ClientContext, now = new Date()): Promise<AuthResult> {
-    this.assertStrongPassword(input.password, input.email);
+    assertStrongPassword(input.password, input.email);
 
-    const id = randomUUID();
-    const normalizedEmail = this.hashing.normalize(input.email);
-    const blindIndex = this.hashing.blindIndex(input.email);
-
-    if ((await this.users.findByEmailBlindIndex(blindIndex)) !== null) throw this.emailTaken();
+    if ((await this.users.findByEmailBlindIndex(this.hashing.blindIndex(input.email))) !== null) {
+      throw this.emailTaken();
+    }
 
     const passwordHash = await this.passwords.hash(input.password);
-    const refreshToken = this.hashing.randomToken(48);
+    const { refreshToken, session: sessionInput } = this.prepareSession(ctx, now);
 
     try {
       const { user, session } = await this.users.createWithSession(
-        {
-          id,
-          emailEncrypted: this.encryption.encrypt(normalizedEmail, this.usersService.emailAad(id)),
-          emailBlindIndex: blindIndex,
-          passwordHash,
-          displayName: input.displayName,
-        },
-        this.newSession(randomUUID(), refreshToken, ctx, now),
+        this.usersService.buildNewUser(input.email, input.displayName, passwordHash),
+        sessionInput,
       );
       await this.record(AUDIT.REGISTER, user.id, ctx);
-      return this.result(user, session, refreshToken);
+      return await this.buildResult(user, session, refreshToken);
     } catch (error) {
       if (error instanceof UniqueConstraintError) throw this.emailTaken();
       throw error;
@@ -112,13 +102,7 @@ export class AuthService {
       await this.users.updatePasswordHash(user.id, await this.passwords.hash(input.password));
     }
 
-    const refreshToken = this.hashing.randomToken(48);
-    const session = await this.sessions.create({
-      ...this.newSession(randomUUID(), refreshToken, ctx, now),
-      userId: user.id,
-    });
-    await this.record(AUDIT.LOGIN, user.id, ctx);
-    return this.result(user, session, refreshToken);
+    return this.startSession(user, ctx, now);
   }
 
   /** Ротація refresh-токена. Повторне використання старого токена відкликає весь ланцюжок. */
@@ -150,7 +134,7 @@ export class AuthService {
       throw this.sessionExpired();
     }
     await this.record(AUDIT.REFRESH, user.id, ctx);
-    return this.result(user, session, refreshToken);
+    return this.buildResult(user, session, refreshToken);
   }
 
   /** Вихід за refresh-токеном (працює, навіть якщо access уже прострочений). */
@@ -168,11 +152,7 @@ export class AuthService {
   }
 
   async getUser(userId: string): Promise<UserDto> {
-    const user = await this.users.findById(userId);
-    if (user === null) {
-      throw new AppException(401, ERROR_CODES.UNAUTHORIZED, 'Authentication required');
-    }
-    return this.usersService.toDto(user);
+    return this.usersService.getDto(userId);
   }
 
   private async registerFailure(user: User, ctx: ClientContext, now: Date): Promise<void> {
@@ -184,12 +164,33 @@ export class AuthService {
     if (shouldLock) await this.record(AUDIT.LOCKED, user.id, ctx, { failures });
   }
 
-  private assertStrongPassword(password: string, email: string): void {
-    const localPart = email.split('@')[0]?.toLowerCase() ?? '';
-    const lowered = password.toLowerCase();
-    if (isCommonPassword(password) || (localPart.length >= 4 && lowered.includes(localPart))) {
-      throw new AppException(400, ERROR_CODES.AUTH_WEAK_PASSWORD, 'Password is too easy to guess');
-    }
+  /** Нова сесія для користувача, що вже пройшов перевірку (пароль або Google). */
+  async startSession(user: User, ctx: ClientContext, now = new Date()): Promise<AuthResult> {
+    const { refreshToken, session: sessionInput } = this.prepareSession(ctx, now);
+    const session = await this.sessions.create({ ...sessionInput, userId: user.id });
+    await this.record(AUDIT.LOGIN, user.id, ctx);
+    return this.buildResult(user, session, refreshToken);
+  }
+
+  /** Готує дані першої сесії нового ланцюжка ротацій і відкритий refresh-токен. */
+  prepareSession(
+    ctx: ClientContext,
+    now: Date,
+    familyId: string = randomUUID(),
+  ): { refreshToken: string; session: Omit<CreateSessionInput, 'userId'> } {
+    const refreshToken = this.hashing.randomToken(48);
+    return { refreshToken, session: this.newSession(familyId, refreshToken, ctx, now) };
+  }
+
+  async buildResult(user: User, session: Session, refreshToken: string): Promise<AuthResult> {
+    return {
+      user: await this.usersService.toDto(user),
+      tokens: {
+        accessToken: this.tokens.signAccess({ userId: user.id, sessionId: session.id }),
+        refreshToken,
+        csrfToken: this.hashing.randomToken(32),
+      },
+    };
   }
 
   private newSession(
@@ -207,18 +208,7 @@ export class AuthService {
     };
   }
 
-  private result(user: User, session: Session, refreshToken: string): AuthResult {
-    return {
-      user: this.usersService.toDto(user),
-      tokens: {
-        accessToken: this.tokens.signAccess({ userId: user.id, sessionId: session.id }),
-        refreshToken,
-        csrfToken: this.hashing.randomToken(32),
-      },
-    };
-  }
-
-  private record(
+  record(
     action: string,
     userId: string | null,
     ctx: ClientContext,

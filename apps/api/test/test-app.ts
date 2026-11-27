@@ -5,6 +5,7 @@ import request from 'supertest';
 import { AppModule } from '../src/app.module';
 import { configureApp } from '../src/app.setup';
 import { AppConfigService } from '../src/config/app-config.service';
+import { OAUTH_PROVIDER, type OAuthProvider } from '../src/auth/oauth/oauth-provider';
 import { createTestDatabase, type TestDatabase } from '../src/database/test-database.fixture';
 import { PrismaService } from '../src/database/prisma.service';
 
@@ -19,15 +20,21 @@ export interface TestApp {
 }
 
 /** Піднімає повний застосунок поверх ізольованої SQLite-БД з реальних міграцій. */
-export async function createTestApp(extraControllers: Type[] = []): Promise<TestApp> {
+export async function createTestApp(
+  extraControllers: Type[] = [],
+  oauthProvider?: OAuthProvider,
+): Promise<TestApp> {
   const db = await createTestDatabase();
-  const moduleRef = await Test.createTestingModule({
+  let builder = Test.createTestingModule({
     imports: [AppModule],
     controllers: extraControllers,
   })
     .overrideProvider(PrismaService)
-    .useValue(db.prisma)
-    .compile();
+    .useValue(db.prisma);
+  if (oauthProvider !== undefined) {
+    builder = builder.overrideProvider(OAUTH_PROVIDER).useValue(oauthProvider);
+  }
+  const moduleRef = await builder.compile();
 
   // eslint-disable-next-line @typescript-eslint/no-unsafe-class-instance-assignment -- літерал опцій Nest
   const app = moduleRef.createNestApplication<NestExpressApplication>({ bodyParser: false });
@@ -55,4 +62,34 @@ export function cookieValue(setCookie: unknown, name: string): string | undefine
   const list = Array.isArray(setCookie) ? (setCookie as string[]) : [];
   const line = list.find((entry) => entry.startsWith(`${name}=`));
   return line?.slice(name.length + 1).split(';')[0];
+}
+
+export const PASSWORD = 'correct horse battery staple';
+
+export interface AuthSession {
+  agent: ReturnType<typeof request.agent>;
+  res: request.Response;
+  csrf: string;
+}
+
+/** Реєстрація нового користувача; повертає браузерну сесію й актуальний CSRF-токен. */
+export async function signUp(t: TestApp, address: string, password = PASSWORD): Promise<AuthSession> {
+  const agent = t.agent();
+  const token = await csrfToken(agent);
+  const res = await agent
+    .post(`${API}/auth/register`)
+    .set('X-CSRF-Token', token)
+    .send({ email: address, password, displayName: 'Ada' });
+  return { agent, res, csrf: cookieValue(res.headers['set-cookie'], 'ytb_csrf') ?? token };
+}
+
+/** Вхід існуючого користувача в новій браузерній сесії. */
+export async function signIn(t: TestApp, address: string, password = PASSWORD): Promise<AuthSession> {
+  const agent = t.agent();
+  const token = await csrfToken(agent);
+  const res = await agent
+    .post(`${API}/auth/login`)
+    .set('X-CSRF-Token', token)
+    .send({ email: address, password });
+  return { agent, res, csrf: cookieValue(res.headers['set-cookie'], 'ytb_csrf') ?? token };
 }

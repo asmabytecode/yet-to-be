@@ -12,3 +12,7 @@ onlyBuiltDependencies:
   - "@prisma/client"
   - "@prisma/engines"
   - prisma
+
+# Закриваємо вразливість у транзитивній залежності Prisma CLI (ReDoS, GHSA-7589-6fvf-x4pw).
+overrides:
+  effect: "^3.22.1"

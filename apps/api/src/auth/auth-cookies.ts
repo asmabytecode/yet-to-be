@@ -1,7 +1,17 @@
 import { Inject, Injectable } from '@nestjs/common';
 import type { CookieOptions, Request, Response } from 'express';
+import { z } from 'zod';
 import { AppConfigService } from '../config/app-config.service';
+import type { OAuthTransaction } from './oauth/oauth-provider';
 import { ttlToSeconds } from './ttl';
+
+const OAUTH_TTL_MS = 10 * 60_000;
+const transactionSchema = z.object({
+  state: z.string().min(1),
+  nonce: z.string().min(1),
+  codeVerifier: z.string().min(1),
+  returnTo: z.string(),
+});
 
 export interface SessionTokens {
   accessToken: string;
@@ -15,7 +25,7 @@ export interface SessionTokens {
  */
 @Injectable()
 export class AuthCookies {
-  readonly names: { access: string; refresh: string; csrf: string };
+  readonly names: { access: string; refresh: string; csrf: string; oauth: string };
   private readonly secure: boolean;
   private readonly accessMaxAgeMs: number;
   private readonly refreshMaxAgeMs: number;
@@ -24,8 +34,8 @@ export class AuthCookies {
   constructor(@Inject(AppConfigService) config: Pick<AppConfigService, 'app' | 'auth' | 'isProd'>) {
     this.secure = config.isProd;
     this.names = config.isProd
-      ? { access: '__Host-ytb_at', refresh: '__Secure-ytb_rt', csrf: '__Host-ytb_csrf' }
-      : { access: 'ytb_at', refresh: 'ytb_rt', csrf: 'ytb_csrf' };
+      ? { access: '__Host-ytb_at', refresh: '__Secure-ytb_rt', csrf: '__Host-ytb_csrf', oauth: '__Host-yt_oauth' }
+      : { access: 'ytb_at', refresh: 'ytb_rt', csrf: 'ytb_csrf', oauth: 'yt_oauth' };
     this.accessMaxAgeMs = ttlToSeconds(config.auth.jwtAccessTtl) * 1000;
     this.refreshMaxAgeMs = config.auth.refreshTokenTtlDays * 86_400_000;
     // Refresh-cookie надсилається браузером лише на auth-маршрути.
@@ -58,6 +68,42 @@ export class AuthCookies {
     res.clearCookie(this.names.access, { ...this.base(true), path: '/' });
     res.clearCookie(this.names.refresh, { ...this.base(true), path: this.refreshPath });
     res.clearCookie(this.names.csrf, { ...this.base(false), path: '/' });
+  }
+
+  /**
+   * Тимчасова cookie потоку Google: підписана (COOKIE_SECRET), httpOnly, 10 хв.
+   * SameSite=Lax, а не Strict: інакше браузер не надішле її при поверненні з Google.
+   */
+  setOAuthTransaction(res: Response, transaction: OAuthTransaction): void {
+    res.cookie(this.names.oauth, JSON.stringify(transaction), {
+      httpOnly: true,
+      secure: this.secure,
+      sameSite: 'lax',
+      signed: true,
+      path: '/',
+      maxAge: OAUTH_TTL_MS,
+    });
+  }
+
+  readOAuthTransaction(req: Request): OAuthTransaction | undefined {
+    const signed = req.signedCookies as Record<string, unknown> | undefined;
+    const raw = signed?.[this.names.oauth];
+    if (typeof raw !== 'string') return undefined;
+    try {
+      const parsed = transactionSchema.safeParse(JSON.parse(raw));
+      return parsed.success ? parsed.data : undefined;
+    } catch {
+      return undefined;
+    }
+  }
+
+  clearOAuthTransaction(res: Response): void {
+    res.clearCookie(this.names.oauth, {
+      httpOnly: true,
+      secure: this.secure,
+      sameSite: 'lax',
+      path: '/',
+    });
   }
 
   readAccess(req: Request): string | undefined {

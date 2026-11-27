@@ -59,7 +59,8 @@ export function configureApp(
   app.use(noStore);
   app.use(json({ limit: BODY_LIMIT }));
   app.use(bodyParserErrorHandler);
-  app.use(cookieParser());
+  // Підписані cookies (потік OAuth) перевіряються через COOKIE_SECRET.
+  app.use(cookieParser(config.auth.cookieSecret));
 
   // CORS навмисно не вмикається: фронтенд ходить на API через той самий origin (проксі).
   app.setGlobalPrefix(`${appConfig.apiPrefix}/v1`);

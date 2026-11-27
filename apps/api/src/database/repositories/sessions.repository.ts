@@ -93,6 +93,15 @@ export class SessionsRepository {
     return count;
   }
 
+  /** Відкликає всі сесії користувача, крім поточної (зміна пароля). */
+  async revokeOthersForUser(userId: string, exceptSessionId: string, now: Date): Promise<number> {
+    const { count } = await this.prisma.session.updateMany({
+      where: { userId, revokedAt: null, id: { not: exceptSessionId } },
+      data: { revokedAt: now },
+    });
+    return count;
+  }
+
   listActiveForUser(userId: string, now: Date): Promise<Session[]> {
     return this.prisma.session.findMany({
       where: { userId, revokedAt: null, expiresAt: { gt: now } },
