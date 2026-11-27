@@ -1,0 +1,6 @@
+# Однакові закінчення рядків на Windows і Linux: shell-скрипти й конфіги з CRLF ламаються в контейнерах і на сервері.
+* text=auto eol=lf
+*.png binary
+*.jpg binary
+*.ico binary
+*.woff2 binary

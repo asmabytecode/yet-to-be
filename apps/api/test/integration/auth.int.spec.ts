@@ -1,6 +1,6 @@
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { ERROR_CODES } from '@yet-to-be/shared';
-import { API, cookieValue, createTestApp, csrfToken, type TestApp } from './test-app';
+import { API, cookieValue, createTestApp, csrfToken, type TestApp } from '../test-app';
 
 const PASSWORD = 'correct horse battery staple';
 
@@ -24,7 +24,12 @@ describe('auth (e2e)', () => {
       .set('X-CSRF-Token', token)
       .send({ email: address, password: PASSWORD, displayName: 'Ada' });
     // Після входу сервер ротує CSRF-токен: актуальне значення — у Set-Cookie.
-    return { agent, token: cookieValue(res.headers['set-cookie'], 'ytb_csrf') ?? token, res, address };
+    return {
+      agent,
+      token: cookieValue(res.headers['set-cookie'], 'ytb_csrf') ?? token,
+      res,
+      address,
+    };
   }
 
   async function login(address: string, password = PASSWORD, agent = ctx.agent()) {

@@ -13,7 +13,16 @@
     "lint": "turbo run lint",
     "typecheck": "turbo run typecheck",
     "test": "turbo run test",
-    "test:e2e": "turbo run test:e2e",
+    "test:unit": "turbo run test:unit",
+    "test:int": "turbo run test:int",
+    "test:cov": "turbo run test:cov",
+    "test:e2e": "pnpm --filter web test:e2e",
+    "test:all": "turbo run lint typecheck test:cov build",
+    "stack:up": "docker compose up -d --build",
+    "stack:e2e": "docker compose -f docker-compose.yml -f docker-compose.e2e.yml up -d --build",
+    "stack:down": "docker compose down",
+    "stack:wait": "node scripts/wait-for.mjs http://localhost:8080/api/v1/health/ready",
+    "check:headers": "node scripts/check-headers.mjs http://localhost:8080",
     "format": "prettier --write .",
     "format:check": "prettier --check .",
     "db:generate": "pnpm --filter api db:generate",
@@ -24,16 +33,8 @@
     "db:reset": "pnpm --filter api db:reset",
     "secrets:generate": "node scripts/generate-secrets.mjs",
     "secrets:scan": "gitleaks detect --source . --config .gitleaks.toml --no-banner",
-    "prepare": "husky"
-  },
-  "lint-staged": {
-    "*.{ts,tsx,js,mjs,cjs}": [
-      "eslint --fix",
-      "prettier --write"
-    ],
-    "*.{json,md,yml,yaml}": [
-      "prettier --write"
-    ]
+    "prepare": "husky",
+    "db:backup": "pnpm --filter api db:backup"
   },
   "devDependencies": {
     "@commitlint/cli": "^19.0.0",

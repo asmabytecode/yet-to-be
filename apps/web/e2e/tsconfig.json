@@ -1,0 +1,13 @@
+{
+  "extends": "@yet-to-be/tsconfig/base.json",
+  "compilerOptions": {
+    "module": "ESNext",
+    "moduleResolution": "Bundler",
+    "lib": ["ES2023", "DOM"],
+    "types": ["node"],
+    "noEmit": true,
+    "declaration": false,
+    "verbatimModuleSyntax": true
+  },
+  "include": ["**/*.ts"]
+}

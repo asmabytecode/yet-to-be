@@ -34,4 +34,9 @@ describe('AppConfigService', () => {
       }).isProd,
     ).toBe(true);
   });
+
+  it('uses Secure cookies only for an https APP_URL', () => {
+    expect(createService().secureCookies).toBe(false);
+    expect(createService({ APP_URL: 'https://example.com' }).secureCookies).toBe(true);
+  });
 });

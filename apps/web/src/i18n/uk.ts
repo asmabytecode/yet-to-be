@@ -1,7 +1,13 @@
 /** Усі тексти інтерфейсу. Мова за замовчуванням — українська. */
 export const uk = {
   app: { name: 'YET TO BE', loading: 'Завантаження…', skipToContent: 'Перейти до вмісту' },
-  nav: { home: 'Головна', profile: 'Профіль', logout: 'Вийти', main: 'Основна навігація' },
+  nav: {
+    home: 'Головна',
+    profile: 'Профіль',
+    logout: 'Вийти',
+    main: 'Основна навігація',
+    signedInAs: 'Ви увійшли як',
+  },
   auth: {
     loginTitle: 'Вхід',
     registerTitle: 'Реєстрація',
@@ -41,7 +47,8 @@ export const uk = {
     setPassword: 'Встановити пароль',
     passwordChanged: 'Пароль змінено. Інші сесії завершено.',
     passwordSet: 'Пароль встановлено',
-    setPasswordHint: 'Ваш акаунт створено через Google. Встановіть пароль, щоб входити й без нього.',
+    setPasswordHint:
+      'Ваш акаунт створено через Google. Встановіть пароль, щоб входити й без нього.',
     accounts: "Прив'язані акаунти",
     googleLinked: 'Google прив’язано',
     googleNotLinked: 'Google не прив’язано',

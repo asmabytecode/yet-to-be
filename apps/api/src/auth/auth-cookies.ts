@@ -21,7 +21,8 @@ export interface SessionTokens {
 
 /**
  * Cookies сесії. Access і refresh — httpOnly (JS не бачить), CSRF-токен — читається JS
- * і дублюється в заголовку (double-submit). У production імена мають префікси __Host-/__Secure-.
+ * і дублюється в заголовку (double-submit). Через https імена мають префікси __Host-/__Secure-
+ * і атрибут Secure; через http (лише localhost, див. env.schema) — без них, інакше браузер їх відкине.
  */
 @Injectable()
 export class AuthCookies {
@@ -31,10 +32,17 @@ export class AuthCookies {
   private readonly refreshMaxAgeMs: number;
   private readonly refreshPath: string;
 
-  constructor(@Inject(AppConfigService) config: Pick<AppConfigService, 'app' | 'auth' | 'isProd'>) {
-    this.secure = config.isProd;
-    this.names = config.isProd
-      ? { access: '__Host-ytb_at', refresh: '__Secure-ytb_rt', csrf: '__Host-ytb_csrf', oauth: '__Host-yt_oauth' }
+  constructor(
+    @Inject(AppConfigService) config: Pick<AppConfigService, 'app' | 'auth' | 'secureCookies'>,
+  ) {
+    this.secure = config.secureCookies;
+    this.names = this.secure
+      ? {
+          access: '__Host-ytb_at',
+          refresh: '__Secure-ytb_rt',
+          csrf: '__Host-ytb_csrf',
+          oauth: '__Host-yt_oauth',
+        }
       : { access: 'ytb_at', refresh: 'ytb_rt', csrf: 'ytb_csrf', oauth: 'yt_oauth' };
     this.accessMaxAgeMs = ttlToSeconds(config.auth.jwtAccessTtl) * 1000;
     this.refreshMaxAgeMs = config.auth.refreshTokenTtlDays * 86_400_000;

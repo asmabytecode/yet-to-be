@@ -1,0 +1,17 @@
+# E2E-режим поверх docker-compose.yml: ті самі production-образи, але
+#   - Google замінено mock-провайдером (OAUTH_MOCK) — справжній Google не викликається;
+#   - rate limiting вимкнено, бо всі тести йдуть з однієї IP-адреси.
+# Обидва прапорці заборонені при NODE_ENV=production, тому тут NODE_ENV=test.
+#
+#   docker compose -f docker-compose.yml -f docker-compose.e2e.yml up -d --build
+#   pnpm stack:wait && pnpm test:e2e
+
+services:
+  migrate:
+    environment:
+      NODE_ENV: test
+  api:
+    environment:
+      NODE_ENV: test
+      THROTTLE_DISABLED: 'true'
+      OAUTH_MOCK: 'true'

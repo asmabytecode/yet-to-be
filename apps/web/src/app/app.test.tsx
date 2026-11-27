@@ -1,4 +1,4 @@
-import { screen } from '@testing-library/react';
+import { screen, within } from '@testing-library/react';
 import { http, HttpResponse } from 'msw';
 import { describe, expect, it } from 'vitest';
 import { SESSION_KEY } from '../shared/api/query-client';
@@ -18,10 +18,19 @@ describe('маршрутизація', () => {
     expect(await screen.findByRole('heading', { name: 'Вітаємо, Ада!' })).toBeInTheDocument();
   });
 
+  it('у header показано ім’я поточного користувача', async () => {
+    mockSession(USER);
+    renderApp('/');
+    const header = await screen.findByRole('banner');
+    expect(await within(header).findByText('Ада')).toBeInTheDocument();
+  });
+
   it('невідомий шлях показує 404', async () => {
     mockSession(null);
     renderApp('/nope');
-    expect(await screen.findByRole('heading', { name: 'Сторінку не знайдено' })).toBeInTheDocument();
+    expect(
+      await screen.findByRole('heading', { name: 'Сторінку не знайдено' }),
+    ).toBeInTheDocument();
   });
 
   it('вихід очищає кеш і веде на /login', async () => {

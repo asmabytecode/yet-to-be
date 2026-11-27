@@ -25,6 +25,11 @@ export class AppConfigService {
     };
   }
 
+  /** Cookies з атрибутом Secure (і префіксами __Host-/__Secure-) — лише коли застосунок відкрито по https. */
+  get secureCookies(): boolean {
+    return new URL(this.config.get('APP_URL', { infer: true })).protocol === 'https:';
+  }
+
   get database() {
     return { url: this.config.get('DATABASE_URL', { infer: true }) };
   }
@@ -54,6 +59,7 @@ export class AppConfigService {
       clientId: this.config.get('GOOGLE_CLIENT_ID', { infer: true }),
       clientSecret: this.config.get('GOOGLE_CLIENT_SECRET', { infer: true }),
       callbackUrl: this.config.get('GOOGLE_CALLBACK_URL', { infer: true }),
+      mock: this.config.get('OAUTH_MOCK', { infer: true }),
     };
   }
 }

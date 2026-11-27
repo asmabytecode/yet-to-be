@@ -1,11 +1,29 @@
-node_modules
-.git
-.env
-.env.*
+# Контекст збірки — корінь монорепо. Патерни з **/ діють на будь-якій глибині.
+**/node_modules
+**/dist
+**/coverage
+**/.turbo
+**/*.tsbuildinfo
+**/playwright-report
+**/test-results
+apps/api/src/generated
+apps/api/data
+
+# Секрети та локальні БД ніколи не потрапляють в образ
+**/.env
+**/.env.*
 !.env.example
-*.db
-*.db-*
-coverage
-dist
-.turbo
-playwright-report
+**/*.db
+**/*.db-*
+**/*.sqlite*
+**/*.pem
+**/*.key
+
+# Git, редактори, CI
+.git
+.github
+.husky
+.vscode
+.idea
+.verify
+**/*.log

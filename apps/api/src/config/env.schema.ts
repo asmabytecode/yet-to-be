@@ -1,6 +1,16 @@
 import { z } from 'zod';
 
 const PLACEHOLDER = 'change-me';
+const LOOPBACK_HOSTS = new Set(['localhost', '127.0.0.1', '[::1]']);
+
+/**
+ * Браузери вважають loopback-адреси безпечним контекстом, тому локальний production-стек
+ * (`docker compose` на http://localhost:8080) дозволений і без TLS. Будь-який інший хост — лише https.
+ */
+export function isSecureOrigin(url: string): boolean {
+  const parsed = new URL(url);
+  return parsed.protocol === 'https:' || LOOPBACK_HOSTS.has(parsed.hostname);
+}
 
 /** Рівно 32 байти у base64: 43 символи + один '='. */
 const base64Key32 = z
@@ -31,6 +41,15 @@ export const envSchema = z
 
     /** Лише для тестів: вимикає rate limiting. У production заборонено. */
     THROTTLE_DISABLED: z
+      .enum(['true', 'false'])
+      .default('false')
+      .transform((value) => value === 'true'),
+
+    /**
+     * Лише для E2E: замість Google використовується локальний mock-провайдер
+     * (сторінка згоди на самому API). У production заборонено.
+     */
+    OAUTH_MOCK: z
       .enum(['true', 'false'])
       .default('false')
       .transform((value) => value === 'true'),
@@ -79,10 +98,22 @@ export const envSchema = z
       });
     }
 
-    if (!env.APP_URL.startsWith('https://')) {
-      ctx.addIssue({ code: 'custom', path: ['APP_URL'], message: 'must use https:// in production' });
+    if (env.OAUTH_MOCK) {
+      ctx.addIssue({
+        code: 'custom',
+        path: ['OAUTH_MOCK'],
+        message: 'must not be enabled in production',
+      });
     }
-    if (!env.GOOGLE_CALLBACK_URL.startsWith('https://')) {
+
+    if (!isSecureOrigin(env.APP_URL)) {
+      ctx.addIssue({
+        code: 'custom',
+        path: ['APP_URL'],
+        message: 'must use https:// in production',
+      });
+    }
+    if (!isSecureOrigin(env.GOOGLE_CALLBACK_URL)) {
       ctx.addIssue({
         code: 'custom',
         path: ['GOOGLE_CALLBACK_URL'],

@@ -1,0 +1,6 @@
+# Зміни в цих шляхах потребують рев'ю власника (Branch protection → Require review from Code Owners).
+*                           @asmabytecode
+/.github/                   @asmabytecode
+/infra/                     @asmabytecode
+/apps/api/src/auth/         @asmabytecode
+/apps/api/src/infra/crypto/ @asmabytecode

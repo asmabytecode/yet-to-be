@@ -1,6 +1,6 @@
 import { afterAll, beforeAll, beforeEach, describe, expect, it } from 'vitest';
-import { FakeOAuthProvider } from './fake-oauth-provider';
-import { API, cookieValue, createTestApp, signUp, type TestApp } from './test-app';
+import { FakeOAuthProvider } from '../fake-oauth-provider';
+import { API, cookieValue, createTestApp, signUp, type TestApp } from '../test-app';
 
 const APP = 'http://localhost:5173';
 const FAILURE = `${APP}/login?error=oauth_failed`;
@@ -40,12 +40,21 @@ describe('Google sign-in (e2e, mock provider)', () => {
       expect(res.status).toBe(302);
       expect(res.headers['location']).toContain('https://accounts.example.test/authorize');
 
-      const line = (res.headers['set-cookie'] as unknown as string[]).find((c) => c.startsWith('yt_oauth='));
+      const line = (res.headers['set-cookie'] as unknown as string[]).find((c) =>
+        c.startsWith('yt_oauth='),
+      );
       expect(line).toBeDefined();
       expect(line).toContain('HttpOnly');
       expect(line).toContain('SameSite=Lax');
       expect(decodeURIComponent(line ?? '')).toContain('yt_oauth=s:');
     });
+  });
+
+  it('hides the E2E mock consent page when OAUTH_MOCK is off', async () => {
+    await ctx
+      .agent()
+      .get(`${API}/auth/google/mock-consent?state=${'a'.repeat(32)}`)
+      .expect(404);
   });
 
   describe('callback: the four linking branches', () => {
@@ -56,7 +65,9 @@ describe('Google sign-in (e2e, mock provider)', () => {
       expect(res.headers['location']).toBe(`${APP}/`);
 
       const session = await agent.get(`${API}/auth/session`).expect(200);
-      const user = (session.body as { user: { email: string; providers: string[]; displayName: string } }).user;
+      const user = (
+        session.body as { user: { email: string; providers: string[]; displayName: string } }
+      ).user;
       expect(user.email).toBe(provider.profile.email);
       expect(user.providers).toEqual(['google']);
       expect(user.displayName).toBe('Grace Hopper');
@@ -85,7 +96,10 @@ describe('Google sign-in (e2e, mock provider)', () => {
       expect((await callback(agent)).headers['location']).toBe(`${APP}/`);
 
       const session = await agent.get(`${API}/auth/session`).expect(200);
-      expect((session.body as { user: { providers: string[] } }).user.providers).toEqual(['password', 'google']);
+      expect((session.body as { user: { providers: string[] } }).user.providers).toEqual([
+        'password',
+        'google',
+      ]);
       const actions = (await ctx.db.prisma.auditLog.findMany()).map((a) => a.action);
       expect(actions).toContain('auth.oauth_linked');
     });
@@ -106,7 +120,11 @@ describe('Google sign-in (e2e, mock provider)', () => {
       provider.profile = { ...provider.profile, email, emailVerified: false };
       const res = await callback((await startFlow()).agent);
       expect(res.headers['location']).toBe(FAILURE);
-      expect(await ctx.db.prisma.oAuthAccount.count({ where: { providerAccountId: provider.profile.subject } })).toBe(0);
+      expect(
+        await ctx.db.prisma.oAuthAccount.count({
+          where: { providerAccountId: provider.profile.subject },
+        }),
+      ).toBe(0);
     });
   });
 

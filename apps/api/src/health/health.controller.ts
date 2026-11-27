@@ -15,6 +15,13 @@ export class HealthController {
     return { status: 'ok' };
   }
 
+  /** Короткий псевдонім readiness для балансувальників і `curl -I /api/v1/health`. */
+  @Public()
+  @Get()
+  health(): Promise<{ status: 'ok' }> {
+    return this.ready();
+  }
+
   @Public()
   @Get('ready')
   async ready(): Promise<{ status: 'ok' }> {
