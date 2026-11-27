@@ -1,6 +1,11 @@
 import { afterAll, beforeAll, beforeEach, describe, expect, it } from 'vitest';
 import { UniqueConstraintError } from '../errors';
-import { clearDatabase, createTestDatabase, type TestDatabase } from '../test-database.fixture';
+import {
+  clearDatabase,
+  createTestDatabase,
+  makeUserInput,
+  type TestDatabase,
+} from '../test-database.fixture';
 import { OAuthAccountsRepository } from './oauth-accounts.repository';
 import { UsersRepository } from './users.repository';
 
@@ -22,14 +27,7 @@ describe('OAuthAccountsRepository', () => {
 
   beforeEach(async () => {
     await clearDatabase(db.prisma);
-    userId = (
-      await users.create({
-        emailEncrypted: 'enc',
-        emailBlindIndex: 'blind',
-        passwordHash: null,
-        displayNameEncrypted: null,
-      })
-    ).id;
+    userId = (await users.create(makeUserInput('oauth', { passwordHash: null }))).id;
   });
 
   it('links and finds an account by provider identity', async () => {

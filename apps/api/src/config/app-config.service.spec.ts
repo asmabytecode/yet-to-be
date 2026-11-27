@@ -28,6 +28,7 @@ describe('AppConfigService', () => {
     expect(
       createService({
         NODE_ENV: 'production',
+        THROTTLE_DISABLED: 'false',
         APP_URL: 'https://example.com',
         GOOGLE_CALLBACK_URL: 'https://example.com/cb',
       }).isProd,

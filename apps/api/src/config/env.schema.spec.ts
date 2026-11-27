@@ -6,6 +6,7 @@ import { validateEnv } from './env.schema';
 const prod = (overrides: Record<string, string> = {}) =>
   buildValidEnv({
     NODE_ENV: 'production',
+    THROTTLE_DISABLED: 'false',
     APP_URL: 'https://example.com',
     GOOGLE_CALLBACK_URL: 'https://example.com/api/v1/auth/google/callback',
     ...overrides,
@@ -81,6 +82,10 @@ describe('validateEnv', () => {
   describe('production', () => {
     it('accepts a valid production environment', () => {
       expect(validateEnv(prod()).NODE_ENV).toBe('production');
+    });
+
+    it('rejects THROTTLE_DISABLED=true', () => {
+      expect(() => validateEnv(prod({ THROTTLE_DISABLED: 'true' }))).toThrow(/THROTTLE_DISABLED/);
     });
 
     it('rejects an http:// APP_URL', () => {

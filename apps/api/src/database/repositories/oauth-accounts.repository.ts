@@ -1,4 +1,4 @@
-import { Injectable } from '@nestjs/common';
+import { Inject, Injectable } from '@nestjs/common';
 import type { OAuthAccount } from '../../generated/prisma/client';
 import { isUniqueViolation, UniqueConstraintError } from '../errors';
 import { PrismaService } from '../prisma.service';
@@ -12,7 +12,7 @@ export interface LinkOAuthAccountInput {
 /** Зв'язки користувача із зовнішніми провайдерами входу (Google). */
 @Injectable()
 export class OAuthAccountsRepository {
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(@Inject(PrismaService) private readonly prisma: PrismaService) {}
 
   async link(input: LinkOAuthAccountInput): Promise<OAuthAccount> {
     try {

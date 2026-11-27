@@ -1,4 +1,4 @@
-import { Injectable } from '@nestjs/common';
+import { Inject, Injectable } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import type { Env } from './env.schema';
 
@@ -8,7 +8,7 @@ import type { Env } from './env.schema';
  */
 @Injectable()
 export class AppConfigService {
-  constructor(private readonly config: ConfigService<Env, true>) {}
+  constructor(@Inject(ConfigService) private readonly config: ConfigService<Env, true>) {}
 
   get isProd(): boolean {
     return this.config.get('NODE_ENV', { infer: true }) === 'production';
@@ -21,6 +21,7 @@ export class AppConfigService {
       apiPrefix: this.config.get('API_PREFIX', { infer: true }),
       appUrl: this.config.get('APP_URL', { infer: true }),
       trustProxy: this.config.get('TRUST_PROXY', { infer: true }),
+      throttleDisabled: this.config.get('THROTTLE_DISABLED', { infer: true }),
     };
   }
 

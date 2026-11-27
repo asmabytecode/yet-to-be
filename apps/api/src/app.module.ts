@@ -1,9 +1,46 @@
 import { Module } from '@nestjs/common';
+import { APP_FILTER, APP_GUARD } from '@nestjs/core';
+import { ThrottlerGuard, ThrottlerModule } from '@nestjs/throttler';
+import { LoggerModule } from 'nestjs-pino';
+import { AuthModule } from './auth/auth.module';
+import { CsrfGuard } from './auth/csrf.guard';
+import { JwtAuthGuard } from './auth/jwt-auth.guard';
+import { AllExceptionsFilter } from './common/all-exceptions.filter';
+import { buildLoggerParams } from './common/logging';
 import { AppConfigModule } from './config/app-config.module';
+import { AppConfigService } from './config/app-config.service';
 import { DatabaseModule } from './database/database.module';
+import { HealthModule } from './health/health.module';
+import { CryptoModule } from './infra/crypto/crypto.module';
 
-/** Кореневий модуль. Feature-модулі (auth, users, health) додаються на наступних етапах. */
+/**
+ * Порядок глобальних guards важливий: спочатку rate limit (дешево відсікає флуд),
+ * потім CSRF, потім автентифікація.
+ */
 @Module({
-  imports: [AppConfigModule, DatabaseModule],
+  imports: [
+    AppConfigModule,
+    LoggerModule.forRootAsync({
+      inject: [AppConfigService],
+      useFactory: (config: AppConfigService) => buildLoggerParams(config),
+    }),
+    ThrottlerModule.forRootAsync({
+      inject: [AppConfigService],
+      useFactory: (config: AppConfigService) => ({
+        throttlers: [{ ttl: 60_000, limit: 100 }],
+        skipIf: () => config.app.throttleDisabled,
+      }),
+    }),
+    DatabaseModule,
+    CryptoModule,
+    AuthModule,
+    HealthModule,
+  ],
+  providers: [
+    { provide: APP_FILTER, useClass: AllExceptionsFilter },
+    { provide: APP_GUARD, useClass: ThrottlerGuard },
+    { provide: APP_GUARD, useClass: CsrfGuard },
+    { provide: APP_GUARD, useClass: JwtAuthGuard },
+  ],
 })
 export class AppModule {}

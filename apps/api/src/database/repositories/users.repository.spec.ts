@@ -1,6 +1,11 @@
 import { afterAll, beforeAll, beforeEach, describe, expect, it } from 'vitest';
 import { RecordNotFoundError, UniqueConstraintError } from '../errors';
-import { clearDatabase, createTestDatabase, type TestDatabase } from '../test-database.fixture';
+import {
+  clearDatabase,
+  createTestDatabase,
+  makeUserInput,
+  type TestDatabase,
+} from '../test-database.fixture';
 import { AuditLogRepository } from './audit-log.repository';
 import { SessionsRepository } from './sessions.repository';
 import { UsersRepository } from './users.repository';
@@ -9,12 +14,7 @@ describe('UsersRepository', () => {
   let db: TestDatabase;
   let users: UsersRepository;
 
-  const newUser = (suffix: string) => ({
-    emailEncrypted: `enc-email-${suffix}`,
-    emailBlindIndex: `blind-${suffix}`,
-    passwordHash: `hash-${suffix}`,
-    displayNameEncrypted: `enc-name-${suffix}`,
-  });
+  const newUser = (suffix: string) => makeUserInput(suffix);
 
   beforeAll(async () => {
     db = await createTestDatabase();
@@ -54,10 +54,57 @@ describe('UsersRepository', () => {
 
   it('updates profile fields', async () => {
     const created = await users.create(newUser('u'));
-    const renamed = await users.updateDisplayName(created.id, 'enc-new-name');
-    expect(renamed.displayNameEncrypted).toBe('enc-new-name');
-    const cleared = await users.updateDisplayName(created.id, null);
-    expect(cleared.displayNameEncrypted).toBeNull();
+    const renamed = await users.updateDisplayName(created.id, 'New Name');
+    expect(renamed.displayName).toBe('New Name');
+  });
+
+  it('creates a user together with a session atomically', async () => {
+    const input = newUser('cws');
+    const { user, session } = await users.createWithSession(input, {
+      familyId: 'fam-cws',
+      refreshTokenHash: 'tok-cws',
+      expiresAt: new Date(Date.now() + 60_000),
+      userAgent: null,
+      ipHash: null,
+    });
+    expect(session.userId).toBe(user.id);
+    expect(user.id).toBe(input.id);
+  });
+
+  it('rolls back the user when the session cannot be created', async () => {
+    const sessions = new SessionsRepository(db.prisma);
+    const owner = await users.create(newUser('owner'));
+    await sessions.create({
+      userId: owner.id,
+      familyId: 'fam-1',
+      refreshTokenHash: 'tok-taken',
+      expiresAt: new Date(Date.now() + 60_000),
+      userAgent: null,
+      ipHash: null,
+    });
+
+    await expect(
+      users.createWithSession(newUser('rollback'), {
+        familyId: 'fam-2',
+        refreshTokenHash: 'tok-taken',
+        expiresAt: new Date(Date.now() + 60_000),
+        userAgent: null,
+        ipHash: null,
+      }),
+    ).rejects.toThrow();
+    expect(await users.findByEmailBlindIndex('blind-rollback')).toBeNull();
+  });
+
+  it('tracks and resets login failures', async () => {
+    const created = await users.create(newUser('lf'));
+    const until = new Date('2026-06-01T12:15:00.000Z');
+    const locked = await users.recordLoginFailure(created.id, 5, until);
+    expect(locked.failedLogins).toBe(5);
+    expect(locked.lockedUntil?.toISOString()).toBe(until.toISOString());
+
+    const reset = await users.resetLoginFailures(created.id);
+    expect(reset.failedLogins).toBe(0);
+    expect(reset.lockedUntil).toBeNull();
   });
 
   it('resets email verification when the email changes', async () => {

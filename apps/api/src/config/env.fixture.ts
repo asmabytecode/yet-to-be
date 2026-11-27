@@ -9,6 +9,8 @@ export function buildValidEnv(overrides: Record<string, string> = {}): Record<st
     API_PORT: '3000',
     API_PREFIX: 'api',
     TRUST_PROXY: 'false',
+    // Тести не впираються в rate limit; окремі тести вмикають його явно.
+    THROTTLE_DISABLED: 'true',
     DATABASE_URL: 'file:./data/test.db',
     JWT_ACCESS_SECRET: randomBytes(64).toString('base64'),
     JWT_ACCESS_TTL: '15m',

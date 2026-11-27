@@ -1,4 +1,4 @@
-import { Injectable } from '@nestjs/common';
+import { Inject, Injectable } from '@nestjs/common';
 import type { Session } from '../../generated/prisma/client';
 import { isNotFound, isUniqueViolation, RecordNotFoundError, UniqueConstraintError } from '../errors';
 import { PrismaService } from '../prisma.service';
@@ -17,7 +17,7 @@ export interface CreateSessionInput {
 /** Refresh-сесії з ротацією та відкликанням. Час передається явно — це спрощує тести. */
 @Injectable()
 export class SessionsRepository {
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(@Inject(PrismaService) private readonly prisma: PrismaService) {}
 
   async create(input: CreateSessionInput): Promise<Session> {
     try {
@@ -32,6 +32,13 @@ export class SessionsRepository {
 
   findByTokenHash(refreshTokenHash: string): Promise<Session | null> {
     return this.prisma.session.findUnique({ where: { refreshTokenHash } });
+  }
+
+  /** Активна сесія: не відкликана й не прострочена. Використовується guard-ом access-токена. */
+  findActiveById(id: string, now: Date): Promise<Session | null> {
+    return this.prisma.session.findFirst({
+      where: { id, revokedAt: null, expiresAt: { gt: now } },
+    });
   }
 
   /**
