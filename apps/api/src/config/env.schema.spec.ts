@@ -1,7 +1,7 @@
 import { randomBytes } from 'node:crypto';
 import { describe, expect, it } from 'vitest';
 import { buildValidEnv } from './env.fixture';
-import { validateEnv } from './env.schema';
+import { isSecureOrigin, validateEnv } from './env.schema';
 
 const prod = (overrides: Record<string, string> = {}) =>
   buildValidEnv({
@@ -92,14 +92,52 @@ describe('validateEnv', () => {
       expect(() => validateEnv(prod({ APP_URL: 'http://example.com' }))).toThrow(/APP_URL/);
     });
 
-    it('rejects placeholder secrets', () => {
+    it('accepts http:// on loopback hosts (local docker compose)', () => {
+      const local = prod({
+        APP_URL: 'http://localhost:8080',
+        GOOGLE_CALLBACK_URL: 'http://localhost:8080/api/v1/auth/google/callback',
+      });
+      expect(validateEnv(local).APP_URL).toBe('http://localhost:8080');
+    });
+
+    it('rejects an http:// Google callback on a public host', () => {
       expect(() =>
-        validateEnv(prod({ GOOGLE_CLIENT_SECRET: 'change-me' })),
-      ).toThrow(/GOOGLE_CLIENT_SECRET/);
+        validateEnv(
+          prod({ GOOGLE_CALLBACK_URL: 'http://example.com/api/v1/auth/google/callback' }),
+        ),
+      ).toThrow(/GOOGLE_CALLBACK_URL/);
+    });
+
+    it('rejects OAUTH_MOCK=true', () => {
+      expect(() => validateEnv(prod({ OAUTH_MOCK: 'true' }))).toThrow(/OAUTH_MOCK/);
+    });
+
+    it('rejects placeholder secrets', () => {
+      expect(() => validateEnv(prod({ GOOGLE_CLIENT_SECRET: 'change-me' }))).toThrow(
+        /GOOGLE_CLIENT_SECRET/,
+      );
     });
 
     it('allows the Google placeholder outside production', () => {
       expect(() => validateEnv(buildValidEnv({ GOOGLE_CLIENT_SECRET: 'change-me' }))).not.toThrow();
+    });
+  });
+
+  it('enables the OAuth mock only when asked', () => {
+    expect(validateEnv(buildValidEnv()).OAUTH_MOCK).toBe(false);
+    expect(validateEnv(buildValidEnv({ OAUTH_MOCK: 'true' })).OAUTH_MOCK).toBe(true);
+  });
+
+  describe('isSecureOrigin', () => {
+    it.each([
+      ['https://example.com', true],
+      ['http://localhost:8080', true],
+      ['http://127.0.0.1:3000', true],
+      ['http://[::1]:8080', true],
+      ['http://example.com', false],
+      ['http://localhost.example.com', false],
+    ])('%s -> %s', (url, expected) => {
+      expect(isSecureOrigin(url)).toBe(expected);
     });
   });
 

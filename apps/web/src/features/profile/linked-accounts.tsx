@@ -31,7 +31,9 @@ export function LinkedAccounts({ user }: { user: UserDto }) {
       <p className="text-sm">{linked ? t('profile.googleLinked') : t('profile.googleNotLinked')}</p>
       {linked ? (
         <>
-          {onlyMethod ? <p className="text-sm text-slate-600">{t('profile.unlinkNeedsPassword')}</p> : null}
+          {onlyMethod ? (
+            <p className="text-sm text-slate-600">{t('profile.unlinkNeedsPassword')}</p>
+          ) : null}
           <Button
             variant="secondary"
             disabled={onlyMethod || unlink.isPending}

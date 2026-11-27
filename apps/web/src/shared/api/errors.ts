@@ -27,7 +27,10 @@ export function applyServerError<T extends FieldValues>(
     const targeted = error.issues.filter((issue) => fields.includes(issue.path));
     if (targeted.length > 0) {
       for (const issue of targeted) {
-        setError(issue.path as FieldPath<T>, { type: 'server', message: i18n.t('validation.invalid_format') });
+        setError(issue.path as FieldPath<T>, {
+          type: 'server',
+          message: i18n.t('validation.invalid_format'),
+        });
       }
       return null;
     }

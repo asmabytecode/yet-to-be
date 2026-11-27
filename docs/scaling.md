@@ -1,0 +1,67 @@
+# Масштабування і подальший розвиток
+
+Каркас уже має точки розширення, тому зростання — це заміна окремих частин, а не переписування.
+Нижче — що робимо, коли спрацьовує тригер. Нічого з цього не робиться наперед.
+
+| Тригер                                                     | Що робимо                                              | Що вже закладено                    |
+| ---------------------------------------------------------- | ------------------------------------------------------ | ----------------------------------- |
+| Більше одного інстансу API або багато конкурентних записів | SQLite → PostgreSQL                                    | репозиторний шар, UUID, без raw SQL |
+| Кілька інстансів API                                       | Redis для rate limiting і кешу сесій                   | stateless API, сесії в БД           |
+| Інші сервіси мають перевіряти токени                       | JWT на EdDSA/ES256 + JWKS-ендпоінт                     | `sid`/`jti`, `iss`/`aud` у токені   |
+| Фонові задачі (листи, звіти)                               | BullMQ + Redis, `apps/worker`                          | модульна структура, shared-пакет    |
+| Нові фічі                                                  | модуль в API + feature-папка в web + схеми в shared    | feature-based структура             |
+| Команда росте                                              | Turborepo remote cache, CODEOWNERS по модулях          | монорепо, ADR                       |
+| Потрібна спостережуваність                                 | OpenTelemetry, метрики Prometheus, централізовані логи | JSON-логи pino, `requestId`         |
+| Ротація ключів шифрування                                  | новий `keyId`, фонова перешифровка, видалення старого  | `keyId` у шифротексті               |
+
+## 1. SQLite → PostgreSQL
+
+1. `prisma/schema.prisma`: `provider = "postgresql"`; замінити `@prisma/adapter-better-sqlite3`
+   на `@prisma/adapter-pg` у `PrismaService`; `DATABASE_URL` — `postgresql://…` (схема env).
+2. Нова baseline-міграція: `prisma migrate diff --from-empty --to-schema prisma/schema.prisma --script`
+   у `prisma/migrations/<timestamp>_postgres_baseline`, старі SQLite-міграції — в архів.
+3. Перенесення даних скриптом: читати SQLite через `better-sqlite3`, писати батчами в PostgreSQL
+   у транзакції; шифротексти й хеші переносяться як є (ключі не змінюються).
+4. `docker-compose.yml`: сервіс `postgres` у мережі `internal` з volume і healthcheck;
+   `migrate` і `api` залежать від нього.
+5. Інтеграційні тести: окрема БД на воркер (`CREATE DATABASE test_<worker>`), або Testcontainers.
+6. Бекап: `pg_dump` замість `scripts/backup-db.mjs`.
+
+## 2. Кілька інстансів API
+
+- `@nestjs/throttler` зі сховищем у Redis (`ThrottlerStorageRedisService`): ліміти спільні для всіх інстансів.
+- Опційно — кеш «сесія активна» в Redis з коротким TTL, щоб `JwtAuthGuard` не ходив у БД на кожен запит;
+  відкликання сесії видаляє ключ.
+- Sticky sessions не потрібні: стан сесії — у БД/Redis, cookies однакові для всіх інстансів.
+- Nginx: `upstream api { server api-1:3000; server api-2:3000; }` або балансувальник платформи;
+  `TRUST_PROXY` — кількість проксі перед API.
+
+## 3. Токени для інших сервісів
+
+- Access-токен підписується асиметрично (EdDSA або ES256), приватний ключ — лише в API.
+- `GET /.well-known/jwks.json` віддає публічні ключі з `kid`; ротація — новий `kid`, старий живе до кінця TTL.
+- Сервіси перевіряють підпис, `iss`, `aud`, `exp` локально; відкликання — через короткий TTL або перевірку `sid`.
+
+## 4. Фонові задачі
+
+- `apps/worker` (NestJS standalone) з BullMQ, черги в Redis; спільні типи задач — у `packages/shared`.
+- Перші кандидати: листи підтвердження email і відновлення пароля, перешифровка при ротації ключів.
+
+## 5. Спостережуваність
+
+- OpenTelemetry SDK (traces + metrics), експорт OTLP у колектор; `requestId` → trace id.
+- `/metrics` для Prometheus лише у внутрішній мережі (не через Nginx).
+- Логи pino вже JSON із redaction — відправляються в Loki / ELK без змін формату.
+
+## 6. Ротація ключів шифрування
+
+1. Додати новий ключ у `DATA_ENCRYPTION_KEYS` і зробити його `DATA_ENCRYPTION_ACTIVE_KEY_ID`.
+2. Нові записи шифруються новим ключем; старі читаються за `keyId` із шифротексту.
+3. Фонова задача перешифровує старі записи батчами.
+4. Коли записів зі старим `keyId` не лишилось — ключ видаляється з оточення.
+   `BLIND_INDEX_KEY` ротується лише з перерахунком індексу для всіх користувачів (одноразова міграція).
+
+## Backlog фіч
+
+Підтвердження email і відновлення пароля (потрібен поштовий провайдер), 2FA (TOTP + recovery-коди),
+passkeys (WebAuthn), ролі та RBAC, аватари в S3-сумісному сховищі через presigned URL, англійська локалізація.

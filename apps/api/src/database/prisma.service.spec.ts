@@ -18,7 +18,9 @@ describe('PrismaService', () => {
   });
 
   it('enforces foreign keys', async () => {
-    const rows = await db.prisma.$queryRaw<{ foreign_keys: number | bigint }[]>`PRAGMA foreign_keys`;
+    const rows = await db.prisma.$queryRaw<
+      { foreign_keys: number | bigint }[]
+    >`PRAGMA foreign_keys`;
     expect(Number(rows[0]?.foreign_keys)).toBe(1);
   });
 

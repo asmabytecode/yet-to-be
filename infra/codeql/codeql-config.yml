@@ -1,0 +1,11 @@
+# Конфіг CodeQL для workflow security.yml.
+#
+# js/insufficient-password-hash дає хибне спрацювання на HashingService:
+#   - blindIndex()/ipHash() це HMAC-SHA256 із секретним ключем, детермінований індекс для
+#     пошуку за email та зіставлення IP; повільний хеш (argon2, bcrypt) тут зламав би пошук;
+#   - паролі хешуються окремо, у password.service.ts, алгоритмом argon2id.
+# Правило відключено лише для цього проєкту; решта запитів security-extended лишаються.
+name: yet-to-be CodeQL config
+query-filters:
+  - exclude:
+      id: js/insufficient-password-hash

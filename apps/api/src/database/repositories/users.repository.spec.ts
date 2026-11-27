@@ -127,11 +127,15 @@ describe('UsersRepository', () => {
     const created = await users.create(newUser('p'));
     const at = new Date('2026-01-01T00:00:00.000Z');
     expect((await users.updatePasswordHash(created.id, 'new-hash')).passwordHash).toBe('new-hash');
-    expect((await users.touchLastLogin(created.id, at)).lastLoginAt?.toISOString()).toBe(at.toISOString());
+    expect((await users.touchLastLogin(created.id, at)).lastLoginAt?.toISOString()).toBe(
+      at.toISOString(),
+    );
   });
 
   it('throws RecordNotFoundError when updating or deleting a missing user', async () => {
-    await expect(users.updateDisplayName('missing', 'x')).rejects.toBeInstanceOf(RecordNotFoundError);
+    await expect(users.updateDisplayName('missing', 'x')).rejects.toBeInstanceOf(
+      RecordNotFoundError,
+    );
     await expect(users.delete('missing')).rejects.toBeInstanceOf(RecordNotFoundError);
   });
 

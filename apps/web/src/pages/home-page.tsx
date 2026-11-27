@@ -8,7 +8,9 @@ export function HomePage() {
   return (
     <Card>
       {/* React екранує текст: displayName безпечно виводити як звичайний вузол */}
-      <h1 className="text-2xl font-semibold">{t('home.welcome', { name: user?.displayName ?? '' })}</h1>
+      <h1 className="text-2xl font-semibold">
+        {t('home.welcome', { name: user?.displayName ?? '' })}
+      </h1>
       <p className="mt-2 text-slate-600">{t('home.empty')}</p>
     </Card>
   );

@@ -27,7 +27,10 @@ export function LoginForm() {
     handleSubmit,
     setError,
     formState: { errors },
-  } = useForm<LoginInput>({ resolver: zodResolver(loginSchema), defaultValues: { email: '', password: '' } });
+  } = useForm<LoginInput>({
+    resolver: zodResolver(loginSchema),
+    defaultValues: { email: '', password: '' },
+  });
 
   const login = useMutation({
     mutationFn: (input: LoginInput) => authApi.login(input),
@@ -37,9 +40,7 @@ export function LoginForm() {
       void navigate(safeReturnTo(from), { replace: true });
     },
     onError: (error) => {
-      setFormError(
-        applyServerError(error, setError, ['email', 'password'], {}),
-      );
+      setFormError(applyServerError(error, setError, ['email', 'password'], {}));
     },
   });
 
@@ -55,7 +56,13 @@ export function LoginForm() {
       }}
     >
       <FormError message={formError} />
-      <Field label={t('auth.email')} type="email" autoComplete="username" error={errors.email} {...register('email')} />
+      <Field
+        label={t('auth.email')}
+        type="email"
+        autoComplete="username"
+        error={errors.email}
+        {...register('email')}
+      />
       <Field
         label={t('auth.password')}
         type="password"

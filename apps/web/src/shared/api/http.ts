@@ -6,7 +6,13 @@ export const API_BASE = '/api/v1';
 const CSRF_COOKIE_NAMES = ['__Host-ytb_csrf', 'ytb_csrf'];
 const SAFE_METHODS = new Set(['GET', 'HEAD', 'OPTIONS']);
 /** На ці шляхи 401 означає "невірні дані", а не "протух access-токен" — refresh не потрібен. */
-const NO_REFRESH_PATHS = new Set(['/auth/login', '/auth/register', '/auth/refresh', '/auth/logout', '/auth/csrf']);
+const NO_REFRESH_PATHS = new Set([
+  '/auth/login',
+  '/auth/register',
+  '/auth/refresh',
+  '/auth/logout',
+  '/auth/csrf',
+]);
 
 export interface ApiIssue {
   path: string;
@@ -62,7 +68,8 @@ async function csrfToken(): Promise<string> {
   if (fromCookie !== undefined) return fromCookie;
   const response = await fetch(`${API_BASE}/auth/csrf`, { credentials: 'include' });
   const body = (await response.json()) as { csrfToken?: unknown };
-  if (typeof body.csrfToken !== 'string') throw new ApiError(response.status, 'UNKNOWN', 'No CSRF token');
+  if (typeof body.csrfToken !== 'string')
+    throw new ApiError(response.status, 'UNKNOWN', 'No CSRF token');
   return body.csrfToken;
 }
 

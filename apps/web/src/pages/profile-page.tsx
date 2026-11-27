@@ -24,7 +24,10 @@ export function ProfilePage() {
         <h2 id="profile-password" className="mb-4 text-lg font-semibold">
           {t('profile.password')}
         </h2>
-        <PasswordForm key={String(user.providers.includes('password'))} hasPassword={user.providers.includes('password')} />
+        <PasswordForm
+          key={String(user.providers.includes('password'))}
+          hasPassword={user.providers.includes('password')}
+        />
       </Card>
       <Card aria-labelledby="profile-accounts">
         <h2 id="profile-accounts" className="mb-4 text-lg font-semibold">

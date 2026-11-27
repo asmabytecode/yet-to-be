@@ -33,7 +33,10 @@ const asString = (value: unknown): string | undefined =>
 
 /** Вибирає ім'я для акаунта з профілю провайдера; не коротше 2 і не довше 50 символів. */
 export function deriveDisplayName(name: string | null, email: string): string {
-  const candidate = (name ?? '').replaceAll(/\p{Cc}/gu, '').trim().slice(0, 50);
+  const candidate = (name ?? '')
+    .replaceAll(/\p{Cc}/gu, '')
+    .trim()
+    .slice(0, 50);
   if (candidate.length >= 2) return candidate;
   const local = (email.split('@')[0] ?? '').slice(0, 50);
   return local.length >= 2 ? local : 'User';
@@ -99,7 +102,8 @@ export class OAuthService {
           providerAccountId: profile.subject,
         });
       } catch (error) {
-        if (error instanceof UniqueConstraintError) throw new OAuthError('Account is already linked');
+        if (error instanceof UniqueConstraintError)
+          throw new OAuthError('Account is already linked');
         throw error;
       }
       if (existing.emailVerifiedAt === null) await this.users.markEmailVerified(existing.id, now);

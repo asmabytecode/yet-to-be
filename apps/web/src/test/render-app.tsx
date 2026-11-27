@@ -26,10 +26,14 @@ export const USER: UserDto = {
 export function mockSession(user: UserDto | null): void {
   server.use(
     http.get(`*${API}/auth/session`, () =>
-      user ? HttpResponse.json({ user }) : HttpResponse.json({ code: 'UNAUTHORIZED', message: 'x' }, { status: 401 }),
+      user
+        ? HttpResponse.json({ user })
+        : HttpResponse.json({ code: 'UNAUTHORIZED', message: 'x' }, { status: 401 }),
     ),
     // Для гостя refresh теж не проходить
-    http.post(`*${API}/auth/refresh`, () => HttpResponse.json({ code: 'UNAUTHORIZED', message: 'x' }, { status: 401 })),
+    http.post(`*${API}/auth/refresh`, () =>
+      HttpResponse.json({ code: 'UNAUTHORIZED', message: 'x' }, { status: 401 }),
+    ),
   );
 }
 

@@ -3,7 +3,8 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { server } from '../../test/server';
 import { ApiError, request, setUnauthorizedHandler } from './http';
 
-const unauthorized = () => HttpResponse.json({ code: 'UNAUTHORIZED', message: 'x' }, { status: 401 });
+const unauthorized = () =>
+  HttpResponse.json({ code: 'UNAUTHORIZED', message: 'x' }, { status: 401 });
 
 beforeEach(() => {
   document.cookie = 'ytb_csrf=csrf-1; path=/';
@@ -34,7 +35,9 @@ describe('request', () => {
     let refreshed = false;
     let refreshCalls = 0;
     server.use(
-      http.get('*/api/v1/data', () => (refreshed ? HttpResponse.json({ ok: true }) : unauthorized())),
+      http.get('*/api/v1/data', () =>
+        refreshed ? HttpResponse.json({ ok: true }) : unauthorized(),
+      ),
       http.post('*/api/v1/auth/refresh', async () => {
         refreshCalls += 1;
         await new Promise((resolve) => setTimeout(resolve, 20));
@@ -64,7 +67,10 @@ describe('request', () => {
   it('onUnauthorized: ignore не викликає обробник', async () => {
     const onEnd = vi.fn();
     setUnauthorizedHandler(onEnd);
-    server.use(http.get('*/api/v1/data', unauthorized), http.post('*/api/v1/auth/refresh', unauthorized));
+    server.use(
+      http.get('*/api/v1/data', unauthorized),
+      http.post('*/api/v1/auth/refresh', unauthorized),
+    );
 
     await expect(request('/data', { onUnauthorized: 'ignore' })).rejects.toBeInstanceOf(ApiError);
     expect(onEnd).not.toHaveBeenCalled();
@@ -92,7 +98,11 @@ describe('request', () => {
     server.use(
       http.post('*/api/v1/x', () =>
         HttpResponse.json(
-          { code: 'VALIDATION_FAILED', message: 'bad', issues: [{ path: 'email', code: 'invalid_format' }] },
+          {
+            code: 'VALIDATION_FAILED',
+            message: 'bad',
+            issues: [{ path: 'email', code: 'invalid_format' }],
+          },
           { status: 400 },
         ),
       ),

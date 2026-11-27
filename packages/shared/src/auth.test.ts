@@ -37,7 +37,9 @@ describe('registerSchema', () => {
 describe('loginSchema', () => {
   it('accepts email and password only', () => {
     expect(loginSchema.safeParse({ email: valid.email, password: 'x' }).success).toBe(true);
-    expect(loginSchema.safeParse({ email: valid.email, password: 'x', extra: 1 }).success).toBe(false);
+    expect(loginSchema.safeParse({ email: valid.email, password: 'x', extra: 1 }).success).toBe(
+      false,
+    );
   });
 });
 

@@ -16,7 +16,10 @@ const bioText = z
   .string()
   .trim()
   .max(500)
-  .refine((value) => !CONTROL_CHARS.test(value.replaceAll(/[\n\r]/g, '')), 'Control characters are not allowed');
+  .refine(
+    (value) => !CONTROL_CHARS.test(value.replaceAll(/[\n\r]/g, '')),
+    'Control characters are not allowed',
+  );
 
 /**
  * Оновлення профілю. Лише ці поля (allowlist); будь-яке інше (email, passwordHash, id…)

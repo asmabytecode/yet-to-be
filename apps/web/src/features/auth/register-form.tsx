@@ -56,8 +56,19 @@ export function RegisterForm() {
       }}
     >
       <FormError message={formError} />
-      <Field label={t('auth.displayName')} autoComplete="nickname" error={errors.displayName} {...register('displayName')} />
-      <Field label={t('auth.email')} type="email" autoComplete="email" error={errors.email} {...register('email')} />
+      <Field
+        label={t('auth.displayName')}
+        autoComplete="nickname"
+        error={errors.displayName}
+        {...register('displayName')}
+      />
+      <Field
+        label={t('auth.email')}
+        type="email"
+        autoComplete="email"
+        error={errors.email}
+        {...register('email')}
+      />
       <Field
         label={t('auth.password')}
         type="password"

@@ -32,10 +32,12 @@ export class CsrfGuard implements CanActivate {
   canActivate(context: ExecutionContext): boolean {
     const req = context.switchToHttp().getRequest<Request>();
     if (SAFE_METHODS.has(req.method)) return true;
-    if (this.reflector.getAllAndOverride<boolean | undefined>(SKIP_CSRF_KEY, [
-      context.getHandler(),
-      context.getClass(),
-    ]) === true) {
+    if (
+      this.reflector.getAllAndOverride<boolean | undefined>(SKIP_CSRF_KEY, [
+        context.getHandler(),
+        context.getClass(),
+      ]) === true
+    ) {
       return true;
     }
 
@@ -47,7 +49,11 @@ export class CsrfGuard implements CanActivate {
 
     const cookie = this.cookies.readCsrf(req);
     const header = req.headers[CSRF_HEADER];
-    if (cookie === undefined || typeof header !== 'string' || !this.hashing.safeEqual(cookie, header)) {
+    if (
+      cookie === undefined ||
+      typeof header !== 'string' ||
+      !this.hashing.safeEqual(cookie, header)
+    ) {
       throw this.invalid();
     }
     return true;

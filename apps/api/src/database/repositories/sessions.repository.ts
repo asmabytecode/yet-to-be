@@ -1,6 +1,11 @@
 import { Inject, Injectable } from '@nestjs/common';
 import type { Session } from '../../generated/prisma/client';
-import { isNotFound, isUniqueViolation, RecordNotFoundError, UniqueConstraintError } from '../errors';
+import {
+  isNotFound,
+  isUniqueViolation,
+  RecordNotFoundError,
+  UniqueConstraintError,
+} from '../errors';
 import { PrismaService } from '../prisma.service';
 
 export interface CreateSessionInput {

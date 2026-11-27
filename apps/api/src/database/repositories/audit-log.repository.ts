@@ -37,7 +37,9 @@ export class AuditLogRepository {
 
   /** Видаляє записи старші за вказану дату (політика зберігання). */
   async deleteOlderThan(before: Date): Promise<number> {
-    const { count } = await this.prisma.auditLog.deleteMany({ where: { createdAt: { lt: before } } });
+    const { count } = await this.prisma.auditLog.deleteMany({
+      where: { createdAt: { lt: before } },
+    });
     return count;
   }
 }

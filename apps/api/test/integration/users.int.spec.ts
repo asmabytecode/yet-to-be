@@ -1,7 +1,7 @@
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { ERROR_CODES } from '@yet-to-be/shared';
-import { FakeOAuthProvider } from './fake-oauth-provider';
-import { API, createTestApp, PASSWORD, signIn, signUp, type TestApp } from './test-app';
+import { FakeOAuthProvider } from '../fake-oauth-provider';
+import { API, createTestApp, PASSWORD, signIn, signUp, type TestApp } from '../test-app';
 
 describe('users/me (e2e)', () => {
   let ctx: TestApp;
@@ -59,7 +59,12 @@ describe('users/me (e2e)', () => {
       const res = await agent
         .patch(`${API}/users/me`)
         .set('X-CSRF-Token', csrf)
-        .send({ displayName: 'Ada L', firstName: 'Ada', lastName: 'Lovelace', bio: 'Maths\nand poetry' })
+        .send({
+          displayName: 'Ada L',
+          firstName: 'Ada',
+          lastName: 'Lovelace',
+          bio: 'Maths\nand poetry',
+        })
         .expect(200);
       expect(res.body).toMatchObject({
         displayName: 'Ada L',
@@ -77,7 +82,10 @@ describe('users/me (e2e)', () => {
 
     it('clears optional fields with an empty string', async () => {
       const { agent, csrf } = await signUp(ctx, email());
-      await agent.patch(`${API}/users/me`).set('X-CSRF-Token', csrf).send({ firstName: 'Ada', bio: 'x' });
+      await agent
+        .patch(`${API}/users/me`)
+        .set('X-CSRF-Token', csrf)
+        .send({ firstName: 'Ada', bio: 'x' });
       const res = await agent
         .patch(`${API}/users/me`)
         .set('X-CSRF-Token', csrf)
@@ -188,7 +196,9 @@ describe('users/me (e2e)', () => {
   describe('Google account link', () => {
     it('refuses to unlink Google when there is no password (409)', async () => {
       const user = await googleUser();
-      const res = await user.agent.delete(`${API}/users/me/oauth/google`).set('X-CSRF-Token', user.csrf);
+      const res = await user.agent
+        .delete(`${API}/users/me/oauth/google`)
+        .set('X-CSRF-Token', user.csrf);
       expect(res.status).toBe(409);
       expect((res.body as { code: string }).code).toBe(ERROR_CODES.AUTH_LAST_LOGIN_METHOD);
     });
@@ -200,11 +210,17 @@ describe('users/me (e2e)', () => {
         .set('X-CSRF-Token', user.csrf)
         .send({ newPassword: 'my very own passphrase' })
         .expect(204);
-      await user.agent.delete(`${API}/users/me/oauth/google`).set('X-CSRF-Token', user.csrf).expect(204);
+      await user.agent
+        .delete(`${API}/users/me/oauth/google`)
+        .set('X-CSRF-Token', user.csrf)
+        .expect(204);
 
       const me = await user.agent.get(`${API}/users/me`).expect(200);
       expect((me.body as { providers: string[] }).providers).toEqual(['password']);
-      await user.agent.delete(`${API}/users/me/oauth/google`).set('X-CSRF-Token', user.csrf).expect(404);
+      await user.agent
+        .delete(`${API}/users/me/oauth/google`)
+        .set('X-CSRF-Token', user.csrf)
+        .expect(404);
     });
   });
 
@@ -214,17 +230,31 @@ describe('users/me (e2e)', () => {
       const first = await signUp(ctx, address);
       await signIn(ctx, address);
       const res = await first.agent.get(`${API}/users/me/sessions`).expect(200);
-      const list = res.body as { id: string; isCurrent: boolean; createdAt: string; lastUsedAt: string }[];
+      const list = res.body as {
+        id: string;
+        isCurrent: boolean;
+        createdAt: string;
+        lastUsedAt: string;
+      }[];
       expect(list).toHaveLength(2);
       expect(list.filter((s) => s.isCurrent)).toHaveLength(1);
-      expect(Object.keys(list[0] ?? {}).sort()).toEqual(['createdAt', 'id', 'isCurrent', 'lastUsedAt', 'userAgent']);
+      expect(Object.keys(list[0] ?? {}).sort()).toEqual([
+        'createdAt',
+        'id',
+        'isCurrent',
+        'lastUsedAt',
+        'userAgent',
+      ]);
     });
 
     it('revokes another session of the same user', async () => {
       const address = email();
       const first = await signUp(ctx, address);
       const second = await signIn(ctx, address);
-      const list = (await first.agent.get(`${API}/users/me/sessions`)).body as { id: string; isCurrent: boolean }[];
+      const list = (await first.agent.get(`${API}/users/me/sessions`)).body as {
+        id: string;
+        isCurrent: boolean;
+      }[];
       const other = list.find((s) => !s.isCurrent);
 
       await first.agent
@@ -238,7 +268,9 @@ describe('users/me (e2e)', () => {
     it("answers 404 for someone else's, unknown or malformed session ids (IDOR)", async () => {
       const mine = await signUp(ctx, email());
       const theirs = await signUp(ctx, email());
-      const theirList = (await theirs.agent.get(`${API}/users/me/sessions`)).body as { id: string }[];
+      const theirList = (await theirs.agent.get(`${API}/users/me/sessions`)).body as {
+        id: string;
+      }[];
       const theirId = theirList[0]?.id ?? '';
 
       const foreign = await mine.agent
@@ -251,7 +283,10 @@ describe('users/me (e2e)', () => {
         .delete(`${API}/users/me/sessions/00000000-0000-4000-8000-000000000000`)
         .set('X-CSRF-Token', mine.csrf)
         .expect(404);
-      await mine.agent.delete(`${API}/users/me/sessions/not-a-uuid`).set('X-CSRF-Token', mine.csrf).expect(400);
+      await mine.agent
+        .delete(`${API}/users/me/sessions/not-a-uuid`)
+        .set('X-CSRF-Token', mine.csrf)
+        .expect(400);
     });
   });
 });

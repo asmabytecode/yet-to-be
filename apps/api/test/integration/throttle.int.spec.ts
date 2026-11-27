@@ -1,5 +1,5 @@
 import { afterAll, beforeAll, describe, expect, it, vi } from 'vitest';
-import { API, createTestApp, csrfToken, type TestApp } from './test-app';
+import { API, createTestApp, csrfToken, type TestApp } from '../test-app';
 
 // Виконується до імпортів: ConfigModule читає env під час завантаження модуля.
 vi.hoisted(() => {

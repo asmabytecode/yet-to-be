@@ -1,7 +1,7 @@
 packages:
-  - "apps/*"
-  - "packages/*"
-  - "scripts"
+  - 'apps/*'
+  - 'packages/*'
+  - 'scripts'
 
 # pnpm 10 блокує build-скрипти залежностей за замовчуванням.
 # Дозволяємо лише ті, що справді потрібні (нативні модулі).
@@ -9,10 +9,13 @@ onlyBuiltDependencies:
   - esbuild
   - better-sqlite3
   - argon2
-  - "@prisma/client"
-  - "@prisma/engines"
+  - '@prisma/client'
+  - '@prisma/engines'
   - prisma
 
 # Закриваємо вразливість у транзитивній залежності Prisma CLI (ReDoS, GHSA-7589-6fvf-x4pw).
 overrides:
-  effect: "^3.22.1"
+  effect: '^3.22.1'
+  # tinypool (воркер-пул Vitest): prototype pollution → RCE, GHSA-5gmw-xhrv-c9v3 і GHSA-85c8-ppgw-ccpr.
+  # Виправлено в >= 2.1.2; Vitest 3 тягне 1.x, тому піднімаємо примусово.
+  tinypool: '^2.1.2'

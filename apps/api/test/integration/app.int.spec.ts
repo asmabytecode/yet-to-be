@@ -2,9 +2,9 @@ import { Writable } from 'node:stream';
 import { Controller, Get } from '@nestjs/common';
 import request from 'supertest';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
-import { Public } from '../src/common/decorators';
-import { logTestHook } from '../src/common/logging';
-import { API, createTestApp, type TestApp } from './test-app';
+import { Public } from '../../src/common/decorators';
+import { logTestHook } from '../../src/common/logging';
+import { API, createTestApp, type TestApp } from '../test-app';
 
 @Controller('boom')
 class BoomController {
@@ -58,10 +58,13 @@ describe('app (e2e)', () => {
   it('reports liveness and readiness', async () => {
     await request(server()).get(`${API}/health/live`).expect(200, { status: 'ok' });
     await request(server()).get(`${API}/health/ready`).expect(200, { status: 'ok' });
+    await request(server()).get(`${API}/health`).expect(200, { status: 'ok' });
   });
 
   it('propagates a safe X-Request-Id and generates one otherwise', async () => {
-    const own = await request(server()).get(`${API}/health/live`).set('X-Request-Id', 'abc12345-test');
+    const own = await request(server())
+      .get(`${API}/health/live`)
+      .set('X-Request-Id', 'abc12345-test');
     expect(own.headers['x-request-id']).toBe('abc12345-test');
     const unsafe = await request(server()).get(`${API}/health/live`).set('X-Request-Id', 'bad id!');
     expect(unsafe.headers['x-request-id']).toMatch(/^[0-9a-f-]{36}$/);
