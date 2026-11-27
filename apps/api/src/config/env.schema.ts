@@ -29,6 +29,12 @@ export const envSchema = z
       .default('false')
       .transform((value) => value === 'true'),
 
+    /** Лише для тестів: вимикає rate limiting. У production заборонено. */
+    THROTTLE_DISABLED: z
+      .enum(['true', 'false'])
+      .default('false')
+      .transform((value) => value === 'true'),
+
     DATABASE_URL: z.string().startsWith('file:'),
 
     JWT_ACCESS_SECRET: z.string().min(64, 'must be at least 64 characters'),
@@ -64,6 +70,14 @@ export const envSchema = z
     }
 
     if (env.NODE_ENV !== 'production') return;
+
+    if (env.THROTTLE_DISABLED) {
+      ctx.addIssue({
+        code: 'custom',
+        path: ['THROTTLE_DISABLED'],
+        message: 'must not be enabled in production',
+      });
+    }
 
     if (!env.APP_URL.startsWith('https://')) {
       ctx.addIssue({ code: 'custom', path: ['APP_URL'], message: 'must use https:// in production' });

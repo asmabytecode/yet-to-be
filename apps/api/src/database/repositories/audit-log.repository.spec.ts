@@ -1,5 +1,10 @@
 import { afterAll, beforeAll, beforeEach, describe, expect, it } from 'vitest';
-import { clearDatabase, createTestDatabase, type TestDatabase } from '../test-database.fixture';
+import {
+  clearDatabase,
+  createTestDatabase,
+  makeUserInput,
+  type TestDatabase,
+} from '../test-database.fixture';
 import { AuditLogRepository } from './audit-log.repository';
 import { UsersRepository } from './users.repository';
 
@@ -19,14 +24,7 @@ describe('AuditLogRepository', () => {
 
   beforeEach(async () => {
     await clearDatabase(db.prisma);
-    userId = (
-      await new UsersRepository(db.prisma).create({
-        emailEncrypted: 'enc',
-        emailBlindIndex: 'blind',
-        passwordHash: null,
-        displayNameEncrypted: null,
-      })
-    ).id;
+    userId = (await new UsersRepository(db.prisma).create(makeUserInput('audit'))).id;
   });
 
   it('records an event and serialises metadata as JSON', async () => {

@@ -1,4 +1,4 @@
-import { Injectable } from '@nestjs/common';
+import { Inject, Injectable } from '@nestjs/common';
 import type { AuditLog } from '../../generated/prisma/client';
 import { PrismaService } from '../prisma.service';
 
@@ -14,7 +14,7 @@ export interface RecordAuditInput {
 /** Журнал безпекових подій. Лише додавання й читання. */
 @Injectable()
 export class AuditLogRepository {
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(@Inject(PrismaService) private readonly prisma: PrismaService) {}
 
   record(input: RecordAuditInput): Promise<AuditLog> {
     return this.prisma.auditLog.create({

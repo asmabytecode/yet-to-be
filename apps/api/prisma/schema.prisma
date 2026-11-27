@@ -27,10 +27,19 @@ model User {
   emailBlindIndex      String    @unique
   /// argon2id-хеш; NULL для акаунтів, створених лише через Google
   passwordHash         String?
-  /// Зашифроване відображуване ім'я
-  displayNameEncrypted String?
+  /// Відображуване ім'я — публічні дані профілю, зберігаються відкрито
+  displayName          String
+  /// Ім'я та прізвище — PII, лише зашифровані (AES-256-GCM)
+  firstNameEncrypted   String?
+  lastNameEncrypted    String?
+  /// Публічні дані профілю
+  bio                  String?
+  avatarUrl            String?
   /// "user" | "admin"
   role                 String    @default("user")
+  /// Лічильник підряд невдалих входів і тимчасове блокування (брутфорс-захист)
+  failedLogins         Int       @default(0)
+  lockedUntil          DateTime?
   emailVerifiedAt      DateTime?
   lastLoginAt          DateTime?
   createdAt            DateTime  @default(now())

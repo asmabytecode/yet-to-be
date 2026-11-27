@@ -1,8 +1,25 @@
+import { randomUUID } from 'node:crypto';
 import { mkdtempSync, readdirSync, readFileSync, rmSync, statSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join, resolve } from 'node:path';
 import Database from 'better-sqlite3';
 import { PrismaService } from './prisma.service';
+import type { CreateUserInput } from './repositories/users.repository';
+
+/** Мінімальний валідний користувач для тестів репозиторіїв. */
+export function makeUserInput(
+  suffix: string,
+  overrides: Partial<CreateUserInput> = {},
+): CreateUserInput {
+  return {
+    id: randomUUID(),
+    emailEncrypted: `enc-email-${suffix}`,
+    emailBlindIndex: `blind-${suffix}`,
+    passwordHash: `hash-${suffix}`,
+    displayName: `User ${suffix}`,
+    ...overrides,
+  };
+}
 
 export interface TestDatabase {
   prisma: PrismaService;

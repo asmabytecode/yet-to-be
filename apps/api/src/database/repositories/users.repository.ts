@@ -1,31 +1,57 @@
-import { Injectable } from '@nestjs/common';
-import type { User } from '../../generated/prisma/client';
+import { Inject, Injectable } from '@nestjs/common';
+import type { Session, User } from '../../generated/prisma/client';
 import { isNotFound, isUniqueViolation, RecordNotFoundError, UniqueConstraintError } from '../errors';
 import { PrismaService } from '../prisma.service';
+import type { CreateSessionInput } from './sessions.repository';
 
 export interface CreateUserInput {
+  /** id генерується застосунком заздалегідь: він потрібен як частина AAD при шифруванні. */
+  id: string;
   /** Уже зашифрований email (шифрування — відповідальність сервісного шару). */
   emailEncrypted: string;
   emailBlindIndex: string;
   /** null для акаунтів, створених лише через Google. */
   passwordHash: string | null;
-  displayNameEncrypted: string | null;
+  displayName: string;
+}
+
+interface UserUpdate {
+  displayName?: string;
+  emailEncrypted?: string;
+  emailBlindIndex?: string;
+  emailVerifiedAt?: Date | null;
+  passwordHash?: string;
+  lastLoginAt?: Date;
+  failedLogins?: number;
+  lockedUntil?: Date | null;
 }
 
 /** Доступ до таблиці users. Репозиторій не шифрує й не хешує: він зберігає готові значення. */
 @Injectable()
 export class UsersRepository {
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(@Inject(PrismaService) private readonly prisma: PrismaService) {}
 
   async create(input: CreateUserInput): Promise<User> {
     try {
-      return await this.prisma.user.create({
-        data: {
-          emailEncrypted: input.emailEncrypted,
-          emailBlindIndex: input.emailBlindIndex,
-          passwordHash: input.passwordHash,
-          displayNameEncrypted: input.displayNameEncrypted,
-        },
+      return await this.prisma.user.create({ data: input });
+    } catch (error) {
+      if (isUniqueViolation(error)) {
+        throw new UniqueConstraintError('email');
+      }
+      throw error;
+    }
+  }
+
+  /** Атомарно створює користувача разом із першою сесією (реєстрація). */
+  async createWithSession(
+    input: CreateUserInput,
+    session: Omit<CreateSessionInput, 'userId'>,
+  ): Promise<{ user: User; session: Session }> {
+    try {
+      return await this.prisma.$transaction(async (tx) => {
+        const user = await tx.user.create({ data: input });
+        const createdSession = await tx.session.create({ data: { ...session, userId: user.id } });
+        return { user, session: createdSession };
       });
     } catch (error) {
       if (isUniqueViolation(error)) {
@@ -43,8 +69,8 @@ export class UsersRepository {
     return this.prisma.user.findUnique({ where: { emailBlindIndex } });
   }
 
-  updateDisplayName(id: string, displayNameEncrypted: string | null): Promise<User> {
-    return this.update(id, { displayNameEncrypted });
+  updateDisplayName(id: string, displayName: string): Promise<User> {
+    return this.update(id, { displayName });
   }
 
   updateEmail(id: string, emailEncrypted: string, emailBlindIndex: string): Promise<User> {
@@ -63,6 +89,15 @@ export class UsersRepository {
     return this.update(id, { lastLoginAt: at });
   }
 
+  /** Фіксує невдалу спробу входу; lockedUntil = null, якщо блокування ще не потрібне. */
+  recordLoginFailure(id: string, failedLogins: number, lockedUntil: Date | null): Promise<User> {
+    return this.update(id, { failedLogins, lockedUntil });
+  }
+
+  resetLoginFailures(id: string): Promise<User> {
+    return this.update(id, { failedLogins: 0, lockedUntil: null });
+  }
+
   /** Видаляє користувача; сесії й OAuth-акаунти видаляються каскадом, журнал аудиту лишається. */
   async delete(id: string): Promise<void> {
     try {
@@ -75,17 +110,7 @@ export class UsersRepository {
     }
   }
 
-  private async update(
-    id: string,
-    data: {
-      displayNameEncrypted?: string | null;
-      emailEncrypted?: string;
-      emailBlindIndex?: string;
-      emailVerifiedAt?: Date | null;
-      passwordHash?: string;
-      lastLoginAt?: Date;
-    },
-  ): Promise<User> {
+  private async update(id: string, data: UserUpdate): Promise<User> {
     try {
       return await this.prisma.user.update({ where: { id }, data });
     } catch (error) {

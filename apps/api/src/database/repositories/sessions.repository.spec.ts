@@ -1,6 +1,11 @@
 import { afterAll, beforeAll, beforeEach, describe, expect, it } from 'vitest';
 import { RecordNotFoundError, UniqueConstraintError } from '../errors';
-import { clearDatabase, createTestDatabase, type TestDatabase } from '../test-database.fixture';
+import {
+  clearDatabase,
+  createTestDatabase,
+  makeUserInput,
+  type TestDatabase,
+} from '../test-database.fixture';
 import { SessionsRepository, type CreateSessionInput } from './sessions.repository';
 import { UsersRepository } from './users.repository';
 
@@ -33,13 +38,22 @@ describe('SessionsRepository', () => {
 
   beforeEach(async () => {
     await clearDatabase(db.prisma);
-    const user = await new UsersRepository(db.prisma).create({
-      emailEncrypted: 'enc',
-      emailBlindIndex: 'blind',
-      passwordHash: 'hash',
-      displayNameEncrypted: null,
-    });
+    const user = await new UsersRepository(db.prisma).create(makeUserInput('sessions'));
     userId = user.id;
+  });
+
+  it('finds only active sessions by id', async () => {
+    const active = await sessions.create(input('tok-active'));
+    const revoked = await sessions.create(input('tok-revoked'));
+    const expired = await sessions.create(
+      input('tok-expired', { expiresAt: new Date('2026-05-01T00:00:00.000Z') }),
+    );
+    await sessions.revoke(revoked.id, now);
+
+    expect((await sessions.findActiveById(active.id, now))?.id).toBe(active.id);
+    expect(await sessions.findActiveById(revoked.id, now)).toBeNull();
+    expect(await sessions.findActiveById(expired.id, now)).toBeNull();
+    expect(await sessions.findActiveById('missing', now)).toBeNull();
   });
 
   it('creates a session and finds it by token hash', async () => {
