@@ -23,7 +23,12 @@ const SESSIONS = [
 ];
 
 function profileHandlers() {
-  server.use(http.get(`*${API}/users/me/sessions`, () => HttpResponse.json(SESSIONS)));
+  server.use(
+    http.get(`*${API}/users/me/sessions`, () => HttpResponse.json(SESSIONS)),
+    http.get(`*${API}/users/me/registrations`, () =>
+      HttpResponse.json({ items: [], nextCursor: null }),
+    ),
+  );
 }
 
 describe('changedFields', () => {

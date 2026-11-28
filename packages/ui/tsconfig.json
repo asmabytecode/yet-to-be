@@ -1,0 +1,5 @@
+{
+  "extends": "@yet-to-be/tsconfig/react.json",
+  "compilerOptions": { "types": [] },
+  "include": ["src", "eslint.config.mjs"]
+}

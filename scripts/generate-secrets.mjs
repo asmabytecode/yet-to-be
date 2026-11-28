@@ -1,11 +1,12 @@
 // Створює .env із .env.example, підставляючи криптостійкі випадкові секрети.
-// Ніколи не перезаписує наявний файл. Значення секретів у консоль не друкуються.
+// Наявний файл не перезаписує: лише дописує в кінець змінні, які з'явилися в .env.example
+// пізніше (наприклад, S3_* з Етапу 14.6). Значення секретів у консоль не друкуються.
 //
 //   pnpm secrets:generate          -> .env
 //   pnpm secrets:generate --ci     -> .env.test (разом із тестовими значеннями Google)
 
 import { randomBytes } from 'node:crypto';
-import { existsSync, readFileSync, writeFileSync } from 'node:fs';
+import { closeSync, openSync, readFileSync, writeFileSync } from 'node:fs';
 import { dirname, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
@@ -17,6 +18,8 @@ const GENERATORS = {
   COOKIE_SECRET: () => b64(32),
   BLIND_INDEX_KEY: () => b64(32),
   DATA_ENCRYPTION_KEYS: () => JSON.stringify({ k1: b64(32) }),
+  // S3 (Етап 14.6): hex — без спецсимволів, безпечно і для JSON-конфігу SeaweedFS, і для S3 SDK.
+  S3_SECRET_ACCESS_KEY: () => randomBytes(32).toString('hex'),
 };
 
 // У CI Google недоступний — підставляємо одноразові тестові значення.
@@ -39,14 +42,59 @@ export function generateEnvContent(exampleText, { ci = false } = {}) {
     .join('\n');
 }
 
-/** Створює файл, якщо його ще немає. Існуючий ніколи не чіпає. */
+const NAME_RE = /^([A-Z0-9_]+)=/;
+
+/**
+ * Рядки .env.example (зі згенерованими секретами), яких ще немає в наявному файлі.
+ * Наявні змінні не змінюються й не дублюються.
+ */
+export function missingEnvLines(existingText, exampleText, { ci = false } = {}) {
+  const present = new Set(
+    existingText
+      .split(/\r?\n/)
+      .map((line) => NAME_RE.exec(line)?.[1])
+      .filter(Boolean),
+  );
+  return generateEnvContent(exampleText, { ci })
+    .split('\n')
+    .filter((line) => {
+      const name = NAME_RE.exec(line)?.[1];
+      return name !== undefined && !present.has(name);
+    });
+}
+
+/**
+ * Створює файл, якщо його ще немає; в наявний лише дописує нові змінні.
+ * Файл відкривається рівно один раз ('a+': створити з правами 600, якщо немає, інакше відкрити
+ * наявний) і далі читається й дописується через той самий дескриптор — без окремої перевірки
+ * існування, тож між «перевірили» і «записали» його не можна підмінити.
+ */
 export function createEnvFile({ rootDir, ci = false }) {
   const target = resolve(rootDir, ci ? '.env.test' : '.env');
-  if (existsSync(target)) return { created: false, path: target };
-
   const example = readFileSync(resolve(rootDir, '.env.example'), 'utf8');
-  writeFileSync(target, generateEnvContent(example, { ci }), { mode: 0o600 });
-  return { created: true, path: target };
+
+  const fd = openSync(target, 'a+', 0o600);
+  try {
+    const existing = readFileSync(fd, 'utf8');
+    // Порожній файл (щойно створений або порожній) — заповнюємо повністю.
+    if (existing.trim() === '') {
+      writeFileSync(fd, generateEnvContent(example, { ci }));
+      return { created: true, path: target, added: [] };
+    }
+    const lines = missingEnvLines(existing, example, { ci });
+    if (lines.length > 0) {
+      const separator = existing.endsWith('\n') ? '' : '\n';
+      const block = [
+        '',
+        '# ---- Додано pnpm secrets:generate (нові змінні з .env.example) ----',
+        ...lines,
+      ];
+      writeFileSync(fd, `${separator}${block.join('\n')}\n`);
+    }
+    return { created: false, path: target, added: lines.map((line) => NAME_RE.exec(line)?.[1]) };
+  } finally {
+    closeSync(fd);
+  }
 }
 
 const isMain = process.argv[1] && resolve(process.argv[1]) === fileURLToPath(import.meta.url);
@@ -54,10 +102,15 @@ const isMain = process.argv[1] && resolve(process.argv[1]) === fileURLToPath(imp
 if (isMain) {
   const rootDir = resolve(dirname(fileURLToPath(import.meta.url)), '..');
   const ci = process.argv.includes('--ci');
-  const { created, path } = createEnvFile({ rootDir, ci });
+  const { created, path, added } = createEnvFile({ rootDir, ci });
 
   if (!created) {
-    console.log(`${path} already exists — nothing changed (existing files are never overwritten).`);
+    // Лише назви змінних, ніколи значення.
+    console.log(
+      added.length === 0
+        ? `${path} already exists and is up to date — nothing changed.`
+        : `${path} already exists — appended new variables: ${added.join(', ')}`,
+    );
   } else {
     console.log(`Created ${path} with freshly generated secrets.`);
     if (!ci) {

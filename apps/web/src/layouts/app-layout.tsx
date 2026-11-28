@@ -2,7 +2,7 @@ import { useMutation } from '@tanstack/react-query';
 import { useTranslation } from 'react-i18next';
 import { NavLink, Outlet, useNavigate } from 'react-router-dom';
 import { authApi } from '../features/auth/api';
-import { useEndSession, useSession } from '../features/auth/use-session';
+import { useEndSession, useIsTeamMember, useSession } from '../features/auth/use-session';
 import { cn } from '../shared/lib/cn';
 import { Button } from '../shared/ui/button';
 
@@ -16,6 +16,7 @@ export function AppLayout() {
   const { t } = useTranslation();
   const endSession = useEndSession();
   const { data: user } = useSession();
+  const { data: member } = useIsTeamMember(user?.id);
   const navigate = useNavigate();
 
   const logout = useMutation({
@@ -47,21 +48,40 @@ export function AppLayout() {
                 {user.displayName}
               </span>
             ) : null}
-            <NavLink to="/" end className={linkClass}>
-              {t('nav.home')}
+            {user ? (
+              <NavLink to="/" end className={linkClass}>
+                {t('nav.home')}
+              </NavLink>
+            ) : null}
+            <NavLink to="/events" className={linkClass}>
+              {t('nav.events')}
             </NavLink>
-            <NavLink to="/profile" className={linkClass}>
-              {t('nav.profile')}
-            </NavLink>
-            <Button
-              variant="secondary"
-              onClick={() => {
-                logout.mutate();
-              }}
-              disabled={logout.isPending}
-            >
-              {t('nav.logout')}
-            </Button>
+            {user ? (
+              <>
+                <NavLink to="/profile" className={linkClass}>
+                  {t('nav.profile')}
+                </NavLink>
+                {member === true ? (
+                  // Адмінка — окремий застосунок під /admin/, тож звичайне посилання, не NavLink.
+                  <a href="/admin/" className={linkClass({ isActive: false })}>
+                    {t('nav.admin')}
+                  </a>
+                ) : null}
+                <Button
+                  variant="secondary"
+                  onClick={() => {
+                    logout.mutate();
+                  }}
+                  disabled={logout.isPending}
+                >
+                  {t('nav.logout')}
+                </Button>
+              </>
+            ) : (
+              <NavLink to="/login" className={linkClass}>
+                {t('nav.login')}
+              </NavLink>
+            )}
           </nav>
         </div>
       </header>

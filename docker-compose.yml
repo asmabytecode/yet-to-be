@@ -1,6 +1,9 @@
-# Production-подібний стек: Nginx (статика + reverse proxy) і API. Назовні відкритий лише Nginx.
+# Production-подібний стек: Nginx (статика + reverse proxy), API, S3-сховище (SeaweedFS) і
+# антивірус (ClamAV). Назовні відкритий лише Nginx.
 #
-#   docker compose up -d --build        → http://localhost:8080
+#   docker compose up -d --build                    → http://localhost:8080 (без антивірусу:
+#                                                      завантаження файлів відхилятимуться — fail closed)
+#   docker compose --profile clamav up -d --build   → повний стек, як у production
 #   docker compose logs -f api
 #   docker compose down                 (дані БД лишаються у volume api-data)
 #
@@ -30,6 +33,21 @@ x-api-env: &api-env
   TRUST_PROXY: 'true'
   APP_URL: ${YTB_PUBLIC_URL:-http://localhost:8080}
   GOOGLE_CALLBACK_URL: ${YTB_PUBLIC_URL:-http://localhost:8080}/api/v1/auth/google/callback
+  # Медіа (Етап 14.6): S3 у внутрішній мережі, антивірус — окремий контейнер.
+  STORAGE_DRIVER: s3
+  S3_ENDPOINT: http://seaweedfs:8333
+  S3_FORCE_PATH_STYLE: 'true'
+  S3_BUCKET_QUARANTINE: ytb-quarantine
+  S3_BUCKET_MEDIA: ytb-media
+  MEDIA_PUBLIC_BASE_URL: /media
+  MALWARE_SCANNER: clamav
+  CLAMAV_HOST: clamav
+
+x-storage-env: &storage-env
+  S3_BUCKET_QUARANTINE: ytb-quarantine
+  S3_BUCKET_MEDIA: ytb-media
+  # Коренева ФС лише для читання: службові файли weed (історія shell тощо) — у tmpfs.
+  HOME: /tmp
 
 services:
   # Одноразово застосовує міграції тим самим образом API і завершується.
@@ -61,8 +79,70 @@ services:
     depends_on:
       migrate:
         condition: service_completed_successfully
+      storage-init:
+        condition: service_completed_successfully
     restart: unless-stopped
     <<: *hardening
+
+  # S3-сумісне сховище (Apache-2.0). Конфіг доступу генерує start.sh з env у tmpfs.
+  # Образ закріплюйте за digest у production (оновлення — через Dependabot docker).
+  seaweedfs:
+    image: chrislusf/seaweedfs:${YTB_SEAWEEDFS_TAG:-latest}
+    entrypoint: ['/bin/sh', '/opt/ytb/start.sh']
+    # Власний entrypoint образу перемикається з root на seaweed (uid 1000) — нам він не потрібен:
+    # одразу запускаємось від користувача, якому належить /data. Root без capabilities
+    # (cap_drop: ALL) не може писати в чужу теку, тому без цього master падає на mkdir /data/m9333.
+    user: '1000:1000'
+    env_file:
+      - ${YTB_ENV_FILE:-.env}
+    environment: *storage-env
+    volumes:
+      - media-data:/data
+      - ./infra/seaweedfs/start.sh:/opt/ytb/start.sh:ro
+    networks:
+      - internal
+    healthcheck:
+      test: ['CMD', 'wget', '-q', '-O', '/dev/null', 'http://127.0.0.1:9333/cluster/status']
+      interval: 10s
+      timeout: 5s
+      retries: 12
+      start_period: 20s
+    restart: unless-stopped
+    <<: *hardening
+
+  storage-init:
+    image: chrislusf/seaweedfs:${YTB_SEAWEEDFS_TAG:-latest}
+    entrypoint: ['/bin/sh', '/opt/ytb/init.sh']
+    user: '1000:1000'
+    environment: *storage-env
+    volumes:
+      - ./infra/seaweedfs/init.sh:/opt/ytb/init.sh:ro
+    networks:
+      - internal
+    depends_on:
+      seaweedfs:
+        condition: service_healthy
+    restart: 'no'
+    <<: *hardening
+
+  # Антивірус для завантажень. Важкий (≈1 ГБ RAM, бази оновлюються на старті), тому в профілі:
+  # docker compose --profile clamav up. Без нього API відхиляє всі завантаження (fail closed).
+  clamav:
+    image: clamav/clamav:${YTB_CLAMAV_TAG:-stable}
+    profiles: ['clamav']
+    volumes:
+      - clamav-db:/var/lib/clamav
+    networks:
+      - internal
+    healthcheck:
+      test: ['CMD', 'clamdcheck.sh']
+      interval: 30s
+      timeout: 10s
+      retries: 10
+      start_period: 300s
+    security_opt:
+      - no-new-privileges:true
+    restart: unless-stopped
 
   web:
     build:
@@ -77,11 +157,15 @@ services:
     depends_on:
       api:
         condition: service_healthy
+      seaweedfs:
+        condition: service_healthy
     restart: unless-stopped
     <<: *hardening
 
 volumes:
   api-data:
+  media-data:
+  clamav-db:
 
 networks:
   # Не `internal: true`: API потребує вихідного доступу до Google (обмін code, JWKS).

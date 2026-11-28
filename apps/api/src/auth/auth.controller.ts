@@ -1,6 +1,7 @@
 import { Body, Controller, Get, HttpCode, Inject, Post, Req, Res } from '@nestjs/common';
 import { Throttle } from '@nestjs/throttler';
 import {
+  type AccessDto,
   type CsrfResponse,
   ERROR_CODES,
   type LoginInput,
@@ -15,6 +16,7 @@ import { CurrentUser, Public } from '../common/decorators';
 import { type AuthUser, clientContext } from '../common/request-context';
 import { ZodValidationPipe } from '../common/zod-validation.pipe';
 import { HashingService } from '../infra/crypto/hashing.service';
+import { IamService } from '../modules/iam';
 import { AuthCookies } from './auth-cookies';
 import { AuthService, type AuthResult } from './auth.service';
 
@@ -26,6 +28,7 @@ export class AuthController {
     @Inject(AuthService) private readonly auth: AuthService,
     @Inject(AuthCookies) private readonly cookies: AuthCookies,
     @Inject(HashingService) private readonly hashing: HashingService,
+    @Inject(IamService) private readonly iam: IamService,
   ) {}
 
   /** Видає CSRF-токен (якщо cookie вже є — повертає наявний). Викликається перед формами входу. */
@@ -101,9 +104,14 @@ export class AuthController {
     this.cookies.clearSession(res);
   }
 
+  /** Поточний користувач і його права (для UI; сервер перевіряє права сам на кожен запит). */
   @Get('session')
-  async session(@CurrentUser() user: AuthUser): Promise<{ user: UserDto }> {
-    return { user: await this.auth.getUser(user.id) };
+  async session(@CurrentUser() user: AuthUser): Promise<{ user: UserDto; access: AccessDto }> {
+    const [dto, access] = await Promise.all([
+      this.auth.getUser(user.id),
+      this.iam.getAccess(user.id),
+    ]);
+    return { user: dto, access: this.iam.toAccessDto(access) };
   }
 
   private respond(res: Response, result: AuthResult): { user: UserDto } {

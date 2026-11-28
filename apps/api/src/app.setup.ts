@@ -6,6 +6,7 @@ import helmet from 'helmet';
 import { Logger } from 'nestjs-pino';
 import { bodyParserErrorHandler } from './common/body-parser-error';
 import { requestIdMiddleware } from './common/request-id';
+import { requestScopeMiddleware } from './platform/request-scope';
 import type { AppConfigService } from './config/app-config.service';
 
 export const BODY_LIMIT = '100kb';
@@ -38,6 +39,7 @@ export function configureApp(
   app.useLogger(app.get(Logger));
 
   app.use(requestIdMiddleware);
+  app.use(requestScopeMiddleware);
   app.use(
     helmet({
       // API віддає лише JSON: усе заборонено, окрім самого API.

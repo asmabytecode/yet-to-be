@@ -9,4 +9,5 @@ export const AUDIT = {
   LOGOUT_ALL: 'auth.logout_all',
   OAUTH_LINKED: 'auth.oauth_linked',
   OAUTH_REGISTER: 'auth.oauth_register',
+  LOGIN_BLOCKED: 'auth.login_blocked',
 } as const;

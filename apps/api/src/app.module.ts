@@ -12,10 +12,15 @@ import { AppConfigService } from './config/app-config.service';
 import { DatabaseModule } from './database/database.module';
 import { HealthModule } from './health/health.module';
 import { CryptoModule } from './infra/crypto/crypto.module';
+import { AuditModule } from './modules/audit';
+import { EventsModule } from './modules/events';
+import { IamModule, PermissionGuard } from './modules/iam';
+import { MediaModule } from './modules/media';
+import { PlatformModule } from './platform/platform.module';
 
 /**
  * Порядок глобальних guards важливий: спочатку rate limit (дешево відсікає флуд),
- * потім CSRF, потім автентифікація.
+ * потім CSRF, потім автентифікація, потім права (RBAC, Етап 14).
  */
 @Module({
   imports: [
@@ -31,8 +36,13 @@ import { CryptoModule } from './infra/crypto/crypto.module';
         skipIf: () => config.app.throttleDisabled,
       }),
     }),
+    PlatformModule,
     DatabaseModule,
     CryptoModule,
+    AuditModule,
+    IamModule,
+    MediaModule,
+    EventsModule,
     AuthModule,
     HealthModule,
   ],
@@ -41,6 +51,7 @@ import { CryptoModule } from './infra/crypto/crypto.module';
     { provide: APP_GUARD, useClass: ThrottlerGuard },
     { provide: APP_GUARD, useClass: CsrfGuard },
     { provide: APP_GUARD, useClass: JwtAuthGuard },
+    { provide: APP_GUARD, useClass: PermissionGuard },
   ],
 })
 export class AppModule {}

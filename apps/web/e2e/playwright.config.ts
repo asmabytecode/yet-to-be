@@ -6,12 +6,15 @@ import { defineConfig, devices } from '@playwright/test';
  *   pnpm test:e2e
  * Інший стенд: E2E_BASE_URL=https://staging.example.com pnpm test:e2e
  * (APP_URL стенда має збігатися з E2E_BASE_URL — інакше спрацює CSRF-перевірка Origin).
+ * Сценарії адмінки на віддаленому стенді пропускаються, якщо не задано E2E_OWNER_GRANT_CMD.
  */
 const baseURL = process.env['E2E_BASE_URL'] ?? 'http://localhost:8080';
 const isCI = Boolean(process.env['CI']);
 
 export default defineConfig({
   testDir: '.',
+  // Власник і адміністратори для сценаріїв адмінки (лише локальний стек, див. global-setup.ts).
+  globalSetup: './global-setup.ts',
   outputDir: '../test-results',
   fullyParallel: true,
   forbidOnly: isCI,

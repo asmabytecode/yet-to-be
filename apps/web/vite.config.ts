@@ -11,8 +11,12 @@ export default defineConfig({
   envPrefix: 'VITE_PUBLIC_',
   server: {
     port: 5173,
-    // Один origin у dev: /api -> NestJS
-    proxy: { '/api': 'http://localhost:3000' },
+    // Один origin у dev, як у production за Nginx: /api -> NestJS, /admin -> dev-сервер адмінки.
+    // Інакше адмінка на :5174 мала б інший Origin, і CSRF-перевірка API відхиляла б її запити.
+    proxy: {
+      '/api': 'http://localhost:3000',
+      '/admin': { target: 'http://localhost:5174', ws: true },
+    },
   },
   build: { sourcemap: false },
   test: {

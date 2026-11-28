@@ -1,4 +1,6 @@
 @import 'tailwindcss';
+/* Класи спільних компонентів (packages/ui) теж мають потрапити в CSS. */
+@source '../../../packages/ui/src';
 
 @layer base {
   :root {

@@ -2,6 +2,7 @@ import { Module } from '@nestjs/common';
 import { AppConfigService } from '../config/app-config.service';
 import { DatabaseModule } from '../database/database.module';
 import { CryptoModule } from '../infra/crypto/crypto.module';
+import { IamModule } from '../modules/iam';
 import { UsersModule } from '../users/users.module';
 import { AuthCookies } from './auth-cookies';
 import { AuthController } from './auth.controller';
@@ -15,7 +16,7 @@ import { TokenService } from './token.service';
 
 /** Guards (Throttler → CSRF → JWT) підключаються глобально в AppModule, щоб зафіксувати порядок. */
 @Module({
-  imports: [DatabaseModule, CryptoModule, UsersModule],
+  imports: [DatabaseModule, CryptoModule, UsersModule, IamModule],
   controllers: [AuthController, OAuthController],
   providers: [
     AuthService,

@@ -13,7 +13,14 @@ export default {
       provider: 'v8',
       reporter: ['text-summary', 'lcov'],
       include: ['src/**/*.ts'],
-      exclude: ['src/main.ts', 'src/generated/**', 'src/**/*.fixture.ts', 'src/**/*.spec.ts'],
+      // src/cli — тонкі точки входу команд; їхня логіка (OwnerBootstrapService, AuditService) покрита тестами.
+      exclude: [
+        'src/main.ts',
+        'src/cli/**',
+        'src/generated/**',
+        'src/**/*.fixture.ts',
+        'src/**/*.spec.ts',
+      ],
       thresholds: {
         lines: 80,
         statements: 80,
@@ -22,6 +29,10 @@ export default {
         // Критичні для безпеки модулі — суворіше.
         'src/auth/**': { lines: 90, statements: 90 },
         'src/infra/crypto/**': { lines: 90, statements: 90 },
+        // Етап 14: права, MFA і журнал.
+        'src/modules/iam/**': { lines: 90, statements: 90 },
+        'src/modules/audit/**': { lines: 90, statements: 90 },
+        'src/database/audit-*.ts': { lines: 90, statements: 90 },
       },
     },
   },

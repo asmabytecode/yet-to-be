@@ -52,10 +52,11 @@ jobs:
           path: |
             apps/api/coverage/lcov.info
             apps/web/coverage/lcov.info
+            apps/admin/coverage/lcov.info
           if-no-files-found: warn
           retention-days: 14
 
-      - name: Build (web build includes check-dist-secrets)
+      - name: Build (web + admin builds include check-dist-secrets)
         run: pnpm build
 
   e2e:

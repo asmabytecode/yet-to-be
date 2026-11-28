@@ -64,12 +64,24 @@ describe('safeReturnTo', () => {
     expect(safeReturnTo('/profile?tab=sessions')).toBe('/profile');
   });
 
+  it('keeps the events list and event pages with a valid slug', () => {
+    expect(safeReturnTo('/events')).toBe('/events');
+    expect(safeReturnTo('/events/kyiv-meetup-2')).toBe('/events/kyiv-meetup-2');
+    expect(safeReturnTo('/events/kyiv?x=1')).toBe('/events/kyiv');
+  });
+
   it.each([
     'https://evil.example',
     '//evil.example',
     '/\\evil.example',
     'profile',
     '/unknown',
+    '/events/',
+    '/events/../admin',
+    '/events/a/b',
+    '/events/Kyiv',
+    '/events/-x',
+    '/events/%2e%2e',
     '',
     undefined,
     42,

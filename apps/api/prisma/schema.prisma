@@ -35,11 +35,16 @@ model User {
   /// Публічні дані профілю
   bio                  String?
   avatarUrl            String?
-  /// "user" | "admin"
+  /// DEPRECATED (Етап 14): ролі тепер у user_roles. Колонка лишається для сумісності.
   role                 String    @default("user")
   /// Лічильник підряд невдалих входів і тимчасове блокування (брутфорс-захист)
   failedLogins         Int       @default(0)
   lockedUntil          DateTime?
+  /// "active" | "blocked" — блокування адміністратором (не плутати з lockedUntil)
+  status               String    @default("active")
+  blockedAt            DateTime?
+  blockedById          String?
+  blockReason          String?
   emailVerifiedAt      DateTime?
   lastLoginAt          DateTime?
   createdAt            DateTime  @default(now())
@@ -48,6 +53,9 @@ model User {
   oauthAccounts OAuthAccount[]
   sessions      Session[]
   auditLogs     AuditLog[]
+  roles         UserRole[]
+  mfa           UserMfa?
+  recoveryCodes MfaRecoveryCode[]
 
   @@map("users")
 }
@@ -82,6 +90,10 @@ model Session {
   revokedAt        DateTime?
   /// id сесії, яка замінила цю під час ротації
   replacedById     String?
+  /// Коли в цій сесії підтверджено MFA (переноситься при ротації)
+  mfaVerifiedAt    DateTime?
+  /// Останнє повторне підтвердження (step-up) для критичних дій
+  stepUpAt         DateTime?
   createdAt        DateTime  @default(now())
 
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
@@ -93,19 +105,234 @@ model Session {
 }
 
 model AuditLog {
-  id        String   @id @default(uuid())
-  /// NULL після видалення користувача (запис журналу зберігається)
-  userId    String?
-  /// Наприклад "auth.login.success", "auth.logout", "profile.update"
-  action    String
-  ipHash    String?
+  id         String   @id @default(uuid())
+  /// Порядковий номер у хеш-ланцюжку (NULL — записи до Етапу 14)
+  seq        Int?     @unique
+  /// Користувач, якого стосується подія; NULL після видалення користувача.
+  /// Не входить у хеш: змінюється базою (ON DELETE SET NULL)
+  userId     String?
+  /// Хто діяв (без FK, щоб видалення користувача не змінювало журнал)
+  actorId    String?
+  /// Наприклад "auth.login.success", "admin.role.grant"
+  action     String
+  targetType String?
+  targetId   String?
+  ipHash     String?
   /// JSON-рядок з додатковими даними (без секретів і PII)
-  metadata  String?
-  createdAt DateTime @default(now())
+  metadata   String?
+  requestId  String?
+  /// SHA-256 попереднього запису і цього запису (виявлення підміни й видалення)
+  prevHash   String?
+  hash       String?
+  createdAt  DateTime @default(now())
 
   user User? @relation(fields: [userId], references: [id], onDelete: SetNull)
 
   @@index([userId, createdAt])
   @@index([action])
+  @@index([actorId, createdAt])
+  @@index([targetType, targetId])
   @@map("audit_logs")
+}
+
+// ---- IAM (Етап 14): гнучкий RBAC ----
+// Каталог прав живе в коді (packages/shared/src/iam.ts); тут — лише ролі та їхні набори прав.
+
+model Role {
+  id          String   @id @default(uuid())
+  /// Стабільний ключ (латиниця): "owner", "admin", "editor"…
+  key         String   @unique
+  name        String
+  description String?
+  /// Системні ролі створює міграція; їх не можна видалити через API
+  isSystem    Boolean  @default(false)
+  /// Власники ролі мусять мати MFA (Етап 14.4)
+  requiresMfa Boolean  @default(false)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  permissions RolePermission[]
+  users       UserRole[]
+
+  @@map("roles")
+}
+
+model RolePermission {
+  roleId     String
+  /// Ключ із каталогу PERMISSIONS (перевіряється кодом)
+  permission String
+
+  role Role @relation(fields: [roleId], references: [id], onDelete: Cascade)
+
+  @@id([roleId, permission])
+  @@map("role_permissions")
+}
+
+model UserRole {
+  userId      String
+  roleId      String
+  /// Хто видав роль (NULL — міграція або bootstrap-команда)
+  grantedById String?
+  grantedAt   DateTime @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  /// Роль із призначеннями видалити не можна (спершу зняти з користувачів)
+  role Role @relation(fields: [roleId], references: [id], onDelete: Restrict)
+
+  @@id([userId, roleId])
+  @@index([roleId])
+  @@map("user_roles")
+}
+
+// ---- MFA (Етап 14.4) ----
+
+model UserMfa {
+  userId          String    @id
+  /// AES-256-GCM шифротекст TOTP-секрету
+  secretEncrypted String
+  /// NULL — налаштування розпочато, але ще не підтверджено кодом
+  enabledAt       DateTime?
+  /// Останній використаний часовий крок TOTP (захист від повторного використання коду)
+  lastUsedStep    Int?
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("user_mfa")
+}
+
+model MfaRecoveryCode {
+  id        String    @id @default(uuid())
+  userId    String
+  /// argon2id-хеш одноразового коду
+  codeHash  String
+  usedAt    DateTime?
+  createdAt DateTime  @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@map("mfa_recovery_codes")
+}
+
+// ---- Медіа (Етап 14.6) ----
+
+model MediaAsset {
+  id             String    @id @default(uuid())
+  /// Заготовка під мульти-організації: поки одна організація "default"
+  organizationId String    @default("default")
+  uploadedById   String
+  /// "processing" | "ready" | "rejected"
+  status         String    @default("processing")
+  /// Код причини відхилення (без подробиць)
+  rejectReason   String?
+  originalSha256 String
+  originalSize   Int
+  width          Int?
+  height         Int?
+  /// JSON: { thumb, md, lg } → ключі об'єктів у bucket media
+  variants       String?
+  createdAt      DateTime  @default(now())
+  updatedAt      DateTime  @updatedAt
+  deletedAt      DateTime?
+
+  @@index([uploadedById, createdAt])
+  @@index([status])
+  @@map("media_assets")
+}
+
+// ---- Події (Етап 14.7) ----
+
+model Event {
+  id             String       @id @default(uuid())
+  organizationId String       @default("default")
+  /// Генерується сервером з назви: [a-z0-9-]
+  slug           String       @unique
+  /// "draft" | "published" | "cancelled" | "archived"
+  status         String       @default("draft")
+  title          String
+  summary        String?
+  /// Markdown без сирого HTML
+  description    String?
+  startsAt       DateTime
+  endsAt         DateTime
+  /// IANA, наприклад "Europe/Warsaw"
+  timezone       String
+  venueName      String?
+  address        String?
+  onlineUrl      String?
+  capacity       Int?
+  coverAssetId   String?
+  /// JSON-масив ключів тегів
+  tags           String       @default("[]")
+  createdById    String
+  updatedById    String
+  publishedAt    DateTime?
+  deletedAt      DateTime?
+  /// Оптимістичне блокування: кожна зміна збільшує версію
+  version        Int          @default(1)
+  /// Активні записи. Змінюється атомарно разом із записом (умова capacity у тому ж UPDATE)
+  registeredCount Int         @default(0)
+  createdAt      DateTime     @default(now())
+  updatedAt      DateTime     @updatedAt
+
+  blocks        EventBlock[]
+  registrations EventRegistration[]
+
+  @@index([status, startsAt])
+  @@index([coverAssetId])
+  @@map("events")
+}
+
+model EventBlock {
+  id        String   @id @default(uuid())
+  eventId   String
+  /// "text" | "agenda_item" | "speaker" | "link" — схема даних у packages/shared
+  type      String
+  position  Int
+  /// JSON, валідується Zod і при записі, і при читанні
+  data      String
+  createdAt DateTime @default(now())
+
+  event Event @relation(fields: [eventId], references: [id], onDelete: Cascade)
+
+  @@index([eventId, position])
+  @@map("event_blocks")
+}
+
+/// Повтор POST з тим самим Idempotency-Key повертає перший результат (подвійний клік, ретраї).
+model IdempotencyKey {
+  userId    String
+  key       String
+  scope     String
+  /// id створеного ресурсу
+  resultId  String
+  createdAt DateTime @default(now())
+
+  @@id([userId, scope, key])
+  @@index([createdAt])
+  @@map("idempotency_keys")
+}
+
+/// Запис користувача на подію. Один рядок на пару (подія, користувач): повторний запис після
+/// скасування оновлює той самий рядок.
+model EventRegistration {
+  id           String    @id @default(uuid())
+  eventId      String
+  userId       String
+  /// "registered" | "cancelled"
+  status       String    @default("registered")
+  cancelledAt  DateTime?
+  /// "self" | "admin" | "user_blocked"
+  cancelReason String?
+  createdAt    DateTime  @default(now())
+  updatedAt    DateTime  @updatedAt
+
+  event Event @relation(fields: [eventId], references: [id], onDelete: Cascade)
+
+  @@unique([eventId, userId])
+  @@index([eventId, status])
+  @@index([userId, status])
+  @@map("event_registrations")
 }

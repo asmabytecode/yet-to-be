@@ -18,9 +18,12 @@ export function LoginForm() {
   const navigate = useNavigate();
   const location = useLocation();
   const [params] = useSearchParams();
-  const [formError, setFormError] = useState<string | null>(
-    params.get('error') === 'oauth_failed' ? t('auth.oauthFailed') : null,
-  );
+  const [formError, setFormError] = useState<string | null>(() => {
+    const code = params.get('error');
+    if (code === 'oauth_failed') return t('auth.oauthFailed');
+    if (code === 'account_blocked') return t('errors.ACCOUNT_BLOCKED');
+    return null;
+  });
 
   const {
     register,

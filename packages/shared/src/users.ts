@@ -63,13 +63,18 @@ export const sessionInfoSchema = z.object({
 });
 export type SessionInfo = z.infer<typeof sessionInfoSchema>;
 
-/** Сторінки, на які дозволено повертати користувача після входу через Google. */
-export const RETURN_TO_ALLOWLIST: readonly string[] = ['/', '/profile'];
+/** Сторінки, на які дозволено повертати користувача після входу (зокрема через Google). */
+export const RETURN_TO_ALLOWLIST: readonly string[] = ['/', '/profile', '/events'];
+
+/** Динамічні сторінки: лише сторінка події з коректним slug (без `..`, `/` і великих літер). */
+const RETURN_TO_PATTERNS: readonly RegExp[] = [/^\/events\/[a-z0-9]+(?:-[a-z0-9]+)*$/];
 
 /** Повертає безпечний відносний шлях або '/'. Абсолютні URL, `//host` і `\` відкидаються. */
 export function safeReturnTo(value: unknown): string {
   if (typeof value !== 'string') return '/';
   if (!value.startsWith('/') || value.startsWith('//') || value.includes('\\')) return '/';
   const path = value.split(/[?#]/)[0] ?? '/';
-  return RETURN_TO_ALLOWLIST.includes(path) ? path : '/';
+  const allowed =
+    RETURN_TO_ALLOWLIST.includes(path) || RETURN_TO_PATTERNS.some((pattern) => pattern.test(path));
+  return allowed ? path : '/';
 }

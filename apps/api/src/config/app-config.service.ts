@@ -62,4 +62,24 @@ export class AppConfigService {
       mock: this.config.get('OAUTH_MOCK', { infer: true }),
     };
   }
+
+  get media() {
+    const get = <K extends keyof Env>(key: K): Env[K] => this.config.get(key, { infer: true });
+    return {
+      storageDriver: get('STORAGE_DRIVER'),
+      s3: {
+        endpoint: get('S3_ENDPOINT'),
+        region: get('S3_REGION'),
+        accessKeyId: get('S3_ACCESS_KEY_ID'),
+        secretAccessKey: get('S3_SECRET_ACCESS_KEY'),
+        forcePathStyle: get('S3_FORCE_PATH_STYLE'),
+      },
+      buckets: { quarantine: get('S3_BUCKET_QUARANTINE'), media: get('S3_BUCKET_MEDIA') },
+      publicBaseUrl: get('MEDIA_PUBLIC_BASE_URL'),
+      scanner: get('MALWARE_SCANNER'),
+      clamav: { host: get('CLAMAV_HOST'), port: get('CLAMAV_PORT') },
+      maxBytes: get('MEDIA_MAX_BYTES'),
+      maxPixels: get('MEDIA_MAX_PIXELS'),
+    };
+  }
 }

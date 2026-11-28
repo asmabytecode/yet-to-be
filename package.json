@@ -34,7 +34,9 @@
     "secrets:generate": "node scripts/generate-secrets.mjs",
     "secrets:scan": "gitleaks detect --source . --config .gitleaks.toml --no-banner",
     "prepare": "husky",
-    "db:backup": "pnpm --filter api db:backup"
+    "db:backup": "pnpm --filter api db:backup",
+    "owner:grant": "pnpm --filter api run owner:grant",
+    "audit:verify": "pnpm --filter api run audit:verify"
   },
   "devDependencies": {
     "@commitlint/cli": "^19.0.0",

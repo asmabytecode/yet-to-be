@@ -22,12 +22,12 @@ export const USER: UserDto = {
   createdAt: '2026-01-01T00:00:00.000Z',
 };
 
-/** Сесія: користувач або гість. */
-export function mockSession(user: UserDto | null): void {
+/** Сесія: користувач або гість; `roles` — ролі адмінки (порожньо — звичайний користувач). */
+export function mockSession(user: UserDto | null, roles: string[] = []): void {
   server.use(
     http.get(`*${API}/auth/session`, () =>
       user
-        ? HttpResponse.json({ user })
+        ? HttpResponse.json({ user, access: { roles, permissions: [], isOwner: false } })
         : HttpResponse.json({ code: 'UNAUTHORIZED', message: 'x' }, { status: 401 }),
     ),
     // Для гостя refresh теж не проходить

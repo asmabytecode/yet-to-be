@@ -11,6 +11,7 @@ import { OAuthService } from './oauth.service';
 
 const OAUTH_LIMIT = { default: { limit: 20, ttl: 60_000 } };
 const FAILURE_PATH = '/login?error=oauth_failed';
+const BLOCKED_PATH = '/login?error=account_blocked';
 const STATE_PATTERN = /^[A-Za-z0-9_-]{16,128}$/;
 /** Сторінка згоди mock-провайдера: без скриптів і стилів, форма лише на той самий origin. */
 const MOCK_CONSENT_CSP =
@@ -59,7 +60,8 @@ export class OAuthController {
       this.logger.warn(
         `Google sign-in failed: ${error instanceof Error ? error.message : 'unknown'}`,
       );
-      res.redirect(302, this.absolute(FAILURE_PATH));
+      const blocked = error instanceof AppException && error.code === ERROR_CODES.ACCOUNT_BLOCKED;
+      res.redirect(302, this.absolute(blocked ? BLOCKED_PATH : FAILURE_PATH));
     }
   }
 

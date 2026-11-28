@@ -4,10 +4,17 @@
 «Наслідки». Рішення не редагуються заднім числом: якщо змінюється підхід, пишеться новий ADR зі
 статусом «Замінює NNNN», а старий отримує статус «Замінено NNNN».
 
-| №                                             | Рішення                                        | Статус   |
-| --------------------------------------------- | ---------------------------------------------- | -------- |
-| [0001](0001-monorepo.md)                      | Монорепо на pnpm workspaces + Turborepo        | Прийнято |
-| [0002](0002-sqlite-with-postgres-path.md)     | SQLite зараз, план переходу на PostgreSQL      | Прийнято |
-| [0003](0003-cookies-not-localstorage.md)      | Токени в httpOnly cookies, а не в localStorage | Прийнято |
-| [0004](0004-field-level-encryption.md)        | Шифрування PII на рівні полів                  | Прийнято |
-| [0005](0005-e2e-against-production-images.md) | E2E проти production-образів з mock Google     | Прийнято |
+| №                                             | Рішення                                           | Статус   |
+| --------------------------------------------- | ------------------------------------------------- | -------- |
+| [0001](0001-monorepo.md)                      | Монорепо на pnpm workspaces + Turborepo           | Прийнято |
+| [0002](0002-sqlite-with-postgres-path.md)     | SQLite зараз, план переходу на PostgreSQL         | Прийнято |
+| [0003](0003-cookies-not-localstorage.md)      | Токени в httpOnly cookies, а не в localStorage    | Прийнято |
+| [0004](0004-field-level-encryption.md)        | Шифрування PII на рівні полів                     | Прийнято |
+| [0005](0005-e2e-against-production-images.md) | E2E проти production-образів з mock Google        | Прийнято |
+| [0006](0006-modular-monolith.md)              | Модульний моноліт, доменні події, фонові задачі   | Прийнято |
+| [0007](0007-rbac-and-owner.md)                | Гнучкий RBAC, власник лише через серверну команду | Прийнято |
+| [0008](0008-mfa-totp-step-up.md)              | MFA (TOTP) і step-up для критичних дій            | Прийнято |
+| [0009](0009-tamper-evident-audit-log.md)      | Журнал дій із хеш-ланцюжком                       | Прийнято |
+| [0010](0010-media-pipeline.md)                | Медіа: S3, карантин, антивірус, перекодування     | Прийнято |
+| [0011](0011-events-content-model.md)          | Події: чернетка → публікація, блоки, місткість    | Прийнято |
+| [0012](0012-admin-spa.md)                     | Адмінка — окремий SPA під /admin                  | Прийнято |
