@@ -33,6 +33,15 @@
    API бачить два хопи — див. docs/scaling.md, розділ 2.
 4. Якщо пакети GHCR приватні: `docker login ghcr.io` токеном з правом лише `read:packages`.
 5. У Google Cloud Console додати redirect URI `https://<домен>/api/v1/auth/google/callback`.
+6. Медіа: у `.env` згенерований `S3_SECRET_ACCESS_KEY`; `STORAGE_DRIVER=s3` і `MALWARE_SCANNER=clamav`
+   compose задає сам. ClamAV запускається з профілем: `docker compose --profile clamav up -d`
+   (перший старт довго качає бази; API без нього в production не прийме файли).
+7. Власник адмінки (один раз, після реєстрації на сайті):
+   `docker compose exec api node dist/cli/owner-grant.js owner@example.com`. Далі — `https://<домен>/admin/`,
+   налаштувати TOTP, зберегти резервні коди офлайн.
+8. Періодично: `docker compose exec api node dist/cli/audit-verify.js` (цілісність журналу дій).
+   Резервні коди власника — єдиний штатний спосіб відновлення: окремої команди скидання MFA ще немає
+   (backlog у docs/scaling.md); без кодів потрібне ручне втручання в БД із записом в журнал інцидентів.
 
 ## Реліз і деплой
 
