@@ -196,14 +196,21 @@ export class EventsService implements OnModuleInit {
     if (input.coverAssetId !== undefined)
       await this.assertMediaReady(referencedMedia(input.coverAssetId, []));
 
-    const { version, tags, ...fields } = input;
+    // Кожне поле перелічено явно: ключі запису ніколи не беруться з вхідних даних.
     const data: EventWrite = { updatedById: actor.userId };
-    for (const [key, value] of Object.entries(fields)) {
-      if (value === undefined) continue;
-      (data as Record<string, unknown>)[key] =
-        key === 'startsAt' || key === 'endsAt' ? new Date(value as string) : value;
-    }
-    if (tags !== undefined) data.tags = JSON.stringify(tags);
+    if (input.title !== undefined) data.title = input.title;
+    if (input.summary !== undefined) data.summary = input.summary;
+    if (input.description !== undefined) data.description = input.description;
+    if (input.startsAt !== undefined) data.startsAt = new Date(input.startsAt);
+    if (input.endsAt !== undefined) data.endsAt = new Date(input.endsAt);
+    if (input.timezone !== undefined) data.timezone = input.timezone;
+    if (input.venueName !== undefined) data.venueName = input.venueName;
+    if (input.address !== undefined) data.address = input.address;
+    if (input.onlineUrl !== undefined) data.onlineUrl = input.onlineUrl;
+    if (input.capacity !== undefined) data.capacity = input.capacity;
+    if (input.coverAssetId !== undefined) data.coverAssetId = input.coverAssetId;
+    if (input.tags !== undefined) data.tags = JSON.stringify(input.tags);
+    const { version } = input;
 
     const updated = await this.repository.updateVersioned(id, version, data);
     if (updated === null) throw conflict();

@@ -2,7 +2,7 @@
 // через його публічний вхід (modules/<name> або modules/<name>/index). Так внутрішні
 // репозиторії й сервіси одного модуля не стають залежністю іншого.
 //   node scripts/check-boundaries.mjs <srcDir>
-import { readdirSync, readFileSync, statSync } from 'node:fs';
+import { readdirSync, readFileSync } from 'node:fs';
 import { dirname, join, relative, resolve, sep } from 'node:path';
 
 const IMPORT_RE =
@@ -48,11 +48,14 @@ export function findViolations(files) {
 }
 
 function collect(dir, root, out) {
-  for (const name of readdirSync(dir)) {
+  // Тип запису береться з самого readdir (без окремого stat): немає перевірки, яку файл міг би
+  // «обігнати» між stat і читанням.
+  for (const entry of readdirSync(dir, { withFileTypes: true })) {
+    const { name } = entry;
     if (name === 'generated' || name === 'node_modules') continue;
     const full = join(dir, name);
-    if (statSync(full).isDirectory()) collect(full, root, out);
-    else if (/\.(ts|tsx|mts|cts)$/.test(name)) {
+    if (entry.isDirectory()) collect(full, root, out);
+    else if (entry.isFile() && /\.(ts|tsx|mts|cts)$/.test(name)) {
       out.push({
         path: relative(root, full).split(sep).join('/'),
         source: readFileSync(full, 'utf8'),

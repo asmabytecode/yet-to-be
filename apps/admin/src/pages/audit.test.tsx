@@ -39,7 +39,7 @@ describe('журнал дій', () => {
     expect(screen.getAllByText('user:22222222')).toHaveLength(2);
     // Метадані — лише текст: тег не стає елементом.
     expect(table.querySelector('script')).toBeNull();
-    expect(screen.getByText(/<script>/)).toBeInTheDocument();
+    expect(table).toHaveTextContent('{"reason":"<script>alert(1)</script>"}');
 
     await user.type(screen.getByLabelText('Дія (напр. admin.user.block)'), 'admin.role.create');
     await user.tab();
