@@ -5,6 +5,8 @@ import {
   makeUserInput,
   type TestDatabase,
 } from '../test-database.fixture';
+import { runInRequestScope } from '../../platform/request-scope';
+import { verifyChain } from '../audit-chain';
 import { AuditLogRepository } from './audit-log.repository';
 import { UsersRepository } from './users.repository';
 
@@ -60,14 +62,77 @@ describe('AuditLogRepository', () => {
     expect(list.map((e) => e.action)).toEqual(['a3', 'a2']);
   });
 
-  it('deletes entries older than a date', async () => {
-    await db.prisma.auditLog.createMany({
-      data: [
-        { userId, action: 'old', createdAt: new Date('2025-01-01T00:00:00.000Z') },
-        { userId, action: 'new', createdAt: new Date('2026-06-01T00:00:00.000Z') },
-      ],
+  it('chains records: sequence, previous hash and a verifiable hash', async () => {
+    const first = await audit.record({ userId, action: 'a1', ipHash: null, metadata: null });
+    const second = await audit.record({
+      userId,
+      actorId: 'admin-id',
+      action: 'a2',
+      ipHash: 'ip',
+      metadata: { n: 1 },
+      targetType: 'user',
+      targetId: userId,
     });
-    expect(await audit.deleteOlderThan(new Date('2026-01-01T00:00:00.000Z'))).toBe(1);
-    expect((await audit.listForUser(userId)).map((e) => e.action)).toEqual(['new']);
+    expect(first.seq).toBe(1);
+    expect(first.prevHash).toBe('GENESIS');
+    expect(second.seq).toBe(2);
+    expect(second.prevHash).toBe(first.hash);
+    expect(second.actorId).toBe('admin-id');
+    expect(first.actorId).toBe(userId);
+
+    const verdict = verifyChain(await audit.chainBatch(0, 100));
+    expect(verdict).toMatchObject({ ok: true, checked: 2 });
+  });
+
+  it('detects tampering and deletion', async () => {
+    for (const action of ['a1', 'a2', 'a3']) {
+      await audit.record({ userId, action, ipHash: null, metadata: { action } });
+    }
+    await db.prisma.auditLog.updateMany({ where: { seq: 2 }, data: { action: 'forged' } });
+    expect(verifyChain(await audit.chainBatch(0, 100))).toMatchObject({
+      ok: false,
+      brokenAtSeq: 2,
+      reason: 'hash_mismatch',
+    });
+
+    await db.prisma.auditLog.deleteMany({ where: { seq: 2 } });
+    expect(verifyChain(await audit.chainBatch(0, 100))).toMatchObject({
+      ok: false,
+      brokenAtSeq: 3,
+      reason: 'gap',
+    });
+  });
+
+  it('keeps the chain intact when concurrent writers race', async () => {
+    await Promise.all(
+      Array.from({ length: 10 }, (_, i) =>
+        audit.record({ userId, action: `race${String(i)}`, ipHash: null, metadata: null }),
+      ),
+    );
+    expect(verifyChain(await audit.chainBatch(0, 100))).toMatchObject({ ok: true, checked: 10 });
+  });
+
+  it('masks PII and secrets in metadata and stores the request id', async () => {
+    const entry = await runInRequestScope({ requestId: 'req-12345678' }, () =>
+      audit.record({
+        userId,
+        action: 'x',
+        ipHash: null,
+        metadata: {
+          email: 'a@example.com',
+          note: 'mail me at b@example.com',
+          password: 'p',
+          ok: 1,
+        },
+      }),
+    );
+    expect(entry.requestId).toBe('req-12345678');
+    expect(entry.metadata).not.toContain('example.com');
+    expect(JSON.parse(entry.metadata ?? '{}')).toMatchObject({ ok: 1, password: '[redacted]' });
+  });
+
+  it('exposes no update or delete methods (append-only)', () => {
+    const methods = Object.getOwnPropertyNames(AuditLogRepository.prototype);
+    expect(methods.filter((name) => /update|delete|remove|clear/i.test(name))).toEqual([]);
   });
 });

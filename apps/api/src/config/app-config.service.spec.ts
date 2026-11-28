@@ -31,8 +31,23 @@ describe('AppConfigService', () => {
         THROTTLE_DISABLED: 'false',
         APP_URL: 'https://example.com',
         GOOGLE_CALLBACK_URL: 'https://example.com/cb',
+        STORAGE_DRIVER: 's3',
+        S3_ACCESS_KEY_ID: 'ytb-api',
+        S3_SECRET_ACCESS_KEY: 'a-real-secret-value',
+        MALWARE_SCANNER: 'clamav',
       }).isProd,
     ).toBe(true);
+  });
+
+  it('exposes media settings with safe defaults', () => {
+    expect(createService().media).toMatchObject({
+      storageDriver: 'memory',
+      scanner: 'fake',
+      buckets: { quarantine: 'ytb-quarantine', media: 'ytb-media' },
+      publicBaseUrl: '/media',
+      maxBytes: 10 * 1024 * 1024,
+      maxPixels: 40_000_000,
+    });
   });
 
   it('uses Secure cookies only for an https APP_URL', () => {

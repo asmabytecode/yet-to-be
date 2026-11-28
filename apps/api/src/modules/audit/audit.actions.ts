@@ -1,0 +1,33 @@
+/** Дії адміністраторів і IAM для журналу. Безпекові події входу — у auth/audit-actions.ts. */
+export const ADMIN_AUDIT = {
+  ACCESS_DENIED: 'admin.access_denied',
+  OWNER_GRANT: 'iam.owner.grant',
+  ROLE_CREATE: 'admin.role.create',
+  ROLE_UPDATE: 'admin.role.update',
+  ROLE_DELETE: 'admin.role.delete',
+  ROLE_GRANT: 'admin.role.grant',
+  ROLE_REVOKE: 'admin.role.revoke',
+  USER_BLOCK: 'admin.user.block',
+  USER_UNBLOCK: 'admin.user.unblock',
+  USER_VIEW_PII: 'admin.user.view_pii',
+  MFA_SETUP: 'mfa.setup',
+  MFA_ENABLE: 'mfa.enable',
+  MFA_VERIFY: 'mfa.verify',
+  MFA_FAILED: 'mfa.failed',
+  MFA_DISABLE: 'mfa.disable',
+  MFA_RECOVERY_USED: 'mfa.recovery_code_used',
+  STEP_UP: 'auth.step_up',
+  STEP_UP_FAILED: 'auth.step_up_failed',
+  MEDIA_UPLOAD: 'admin.media.upload',
+  MEDIA_DELETE: 'admin.media.delete',
+  MEDIA_REJECTED: 'media.rejected',
+  EVENT_CREATE: 'admin.event.create',
+  EVENT_UPDATE: 'admin.event.update',
+  EVENT_BLOCKS: 'admin.event.blocks_replace',
+  EVENT_TRANSITION: 'admin.event.transition',
+  EVENT_DUPLICATE: 'admin.event.duplicate',
+  EVENT_DELETE: 'admin.event.delete',
+  REGISTRATION_CANCEL: 'admin.registration.cancel',
+} as const;
+
+export type AdminAuditAction = (typeof ADMIN_AUDIT)[keyof typeof ADMIN_AUDIT];

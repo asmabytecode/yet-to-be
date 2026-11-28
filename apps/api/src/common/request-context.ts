@@ -6,7 +6,19 @@ export interface AuthUser {
   sessionId: string;
 }
 
-export type AppRequest = Request & { user?: AuthUser };
+/**
+ * Права користувача, обчислені PermissionGuard з БД на цей запит. Тип описано тут, щоб
+ * common не залежав від модуля iam; повний тип — `Access` у modules/iam.
+ */
+export interface AccessSnapshot {
+  userId: string;
+  roleKeys: readonly string[];
+  permissions: ReadonlySet<string>;
+  isOwner: boolean;
+  requiresMfa: boolean;
+}
+
+export type AppRequest = Request & { user?: AuthUser; access?: AccessSnapshot };
 
 /** Контекст клієнта для аудиту й сесій. */
 export interface ClientContext {

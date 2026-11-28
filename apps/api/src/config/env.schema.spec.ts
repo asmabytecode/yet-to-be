@@ -9,6 +9,10 @@ const prod = (overrides: Record<string, string> = {}) =>
     THROTTLE_DISABLED: 'false',
     APP_URL: 'https://example.com',
     GOOGLE_CALLBACK_URL: 'https://example.com/api/v1/auth/google/callback',
+    STORAGE_DRIVER: 's3',
+    S3_ACCESS_KEY_ID: 'ytb-api',
+    S3_SECRET_ACCESS_KEY: randomBytes(24).toString('base64'),
+    MALWARE_SCANNER: 'clamav',
     ...overrides,
   });
 
@@ -115,6 +119,29 @@ describe('validateEnv', () => {
     it('rejects placeholder secrets', () => {
       expect(() => validateEnv(prod({ GOOGLE_CLIENT_SECRET: 'change-me' }))).toThrow(
         /GOOGLE_CLIENT_SECRET/,
+      );
+    });
+
+    it('requires S3 storage and a real malware scanner', () => {
+      expect(() => validateEnv(prod({ STORAGE_DRIVER: 'memory' }))).toThrow(/STORAGE_DRIVER/);
+      expect(() => validateEnv(prod({ MALWARE_SCANNER: 'fake' }))).toThrow(/MALWARE_SCANNER/);
+      expect(() => validateEnv(prod({ S3_SECRET_ACCESS_KEY: 'change-me' }))).toThrow(
+        /S3_SECRET_ACCESS_KEY/,
+      );
+    });
+
+    it('requires S3 credentials whenever the s3 driver is used', () => {
+      expect(() => validateEnv(buildValidEnv({ STORAGE_DRIVER: 's3' }))).toThrow(
+        /S3_ACCESS_KEY_ID/,
+      );
+    });
+
+    it('rejects unsafe media URLs and bucket names', () => {
+      expect(() =>
+        validateEnv(buildValidEnv({ MEDIA_PUBLIC_BASE_URL: 'javascript:alert(1)' })),
+      ).toThrow(/MEDIA_PUBLIC_BASE_URL/);
+      expect(() => validateEnv(buildValidEnv({ S3_BUCKET_MEDIA: '../etc' }))).toThrow(
+        /S3_BUCKET_MEDIA/,
       );
     });
 

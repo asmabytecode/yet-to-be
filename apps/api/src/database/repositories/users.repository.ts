@@ -105,6 +105,16 @@ export class UsersRepository {
     return this.prisma.user.findUnique({ where: { id } });
   }
 
+  /** Відображувані імена за id (для журналу й списків адмінки). */
+  async findDisplayNames(ids: readonly string[]): Promise<Map<string, string>> {
+    if (ids.length === 0) return new Map();
+    const rows = await this.prisma.user.findMany({
+      where: { id: { in: [...new Set(ids)] } },
+      select: { id: true, displayName: true },
+    });
+    return new Map(rows.map((row) => [row.id, row.displayName]));
+  }
+
   findByEmailBlindIndex(emailBlindIndex: string): Promise<User | null> {
     return this.prisma.user.findUnique({ where: { emailBlindIndex } });
   }

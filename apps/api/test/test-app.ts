@@ -8,6 +8,7 @@ import { AppConfigService } from '../src/config/app-config.service';
 import { OAUTH_PROVIDER, type OAuthProvider } from '../src/auth/oauth/oauth-provider';
 import { createTestDatabase, type TestDatabase } from '../src/database/test-database.fixture';
 import { PrismaService } from '../src/database/prisma.service';
+import { totp } from '../src/modules/iam';
 
 export const API = '/api/v1';
 
@@ -100,4 +101,28 @@ export async function signIn(
     .set('X-CSRF-Token', token)
     .send({ email: address, password });
   return { agent, res, csrf: cookieValue(res.headers['set-cookie'], 'ytb_csrf') ?? token };
+}
+
+/** Вмикає MFA в цій сесії; повертає секрет (для наступних кодів — `totp(secret, Date.now() + 30_000)`). */
+export async function enableMfa(session: AuthSession): Promise<string> {
+  const setup = await session.agent
+    .post(`${API}/auth/mfa/setup`)
+    .set('X-CSRF-Token', session.csrf)
+    .expect(200);
+  const { secret } = setup.body as { secret: string };
+  await session.agent
+    .post(`${API}/auth/mfa/enable`)
+    .set('X-CSRF-Token', session.csrf)
+    .send({ code: totp(secret, Date.now()) })
+    .expect(200);
+  return secret;
+}
+
+/** Повторне підтвердження паролем (step-up) у цій сесії. */
+export async function stepUp(session: AuthSession, password = PASSWORD): Promise<void> {
+  await session.agent
+    .post(`${API}/auth/step-up`)
+    .set('X-CSRF-Token', session.csrf)
+    .send({ password })
+    .expect(204);
 }

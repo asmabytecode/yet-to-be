@@ -53,7 +53,15 @@ export class SessionsRepository {
   async rotate(oldSessionId: string, next: CreateSessionInput, now: Date): Promise<Session> {
     try {
       return await this.prisma.$transaction(async (tx) => {
-        const created = await tx.session.create({ data: next });
+        // Підтвердження MFA і step-up переходять у нову сесію ланцюжка (інакше адміна
+        // просили б вводити код після кожного оновлення токена).
+        const old = await tx.session.findUniqueOrThrow({
+          where: { id: oldSessionId },
+          select: { mfaVerifiedAt: true, stepUpAt: true },
+        });
+        const created = await tx.session.create({
+          data: { ...next, mfaVerifiedAt: old.mfaVerifiedAt, stepUpAt: old.stepUpAt },
+        });
         await tx.session.update({
           where: { id: oldSessionId },
           data: { revokedAt: now, replacedById: created.id },
@@ -69,6 +77,14 @@ export class SessionsRepository {
       }
       throw error;
     }
+  }
+
+  /** Позначає сесію як підтверджену MFA та/або нещодавнім step-up. */
+  async markVerified(
+    id: string,
+    flags: { mfaVerifiedAt?: Date | null; stepUpAt?: Date | null },
+  ): Promise<void> {
+    await this.prisma.session.update({ where: { id }, data: flags });
   }
 
   /** Відкликає одну сесію (якщо вона ще активна). Повертає true, якщо щось змінилось. */

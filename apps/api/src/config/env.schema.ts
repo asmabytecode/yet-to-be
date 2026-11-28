@@ -78,6 +78,43 @@ export const envSchema = z
     GOOGLE_CLIENT_ID: z.string().min(1),
     GOOGLE_CLIENT_SECRET: z.string().min(1),
     GOOGLE_CALLBACK_URL: z.url(),
+
+    // ---- Медіа (Етап 14.6) ----
+    /** memory — лише для тестів і розробки без MinIO; у production — тільки s3. */
+    STORAGE_DRIVER: z.enum(['s3', 'memory']).default('memory'),
+    S3_ENDPOINT: z.url().optional(),
+    S3_REGION: z.string().min(1).default('us-east-1'),
+    S3_ACCESS_KEY_ID: z.string().min(1).optional(),
+    S3_SECRET_ACCESS_KEY: z.string().min(1).optional(),
+    S3_FORCE_PATH_STYLE: z
+      .enum(['true', 'false'])
+      .default('true')
+      .transform((value) => value === 'true'),
+    S3_BUCKET_QUARANTINE: z
+      .string()
+      .regex(/^[a-z0-9][a-z0-9.-]{2,62}$/)
+      .default('ytb-quarantine'),
+    S3_BUCKET_MEDIA: z
+      .string()
+      .regex(/^[a-z0-9][a-z0-9.-]{2,62}$/)
+      .default('ytb-media'),
+    /** Звідки браузер завантажує готові варіанти (Nginx проксує на bucket media). */
+    MEDIA_PUBLIC_BASE_URL: z
+      .string()
+      .regex(/^(\/[a-z0-9/_-]*|https:\/\/\S+)$/)
+      .default('/media'),
+    /** fake — лише для тестів: «знаходить» тільки тестовий рядок EICAR. */
+    MALWARE_SCANNER: z.enum(['clamav', 'fake']).default('fake'),
+    CLAMAV_HOST: z.string().min(1).default('clamav'),
+    CLAMAV_PORT: z.coerce.number().int().min(1).max(65535).default(3310),
+    MEDIA_MAX_BYTES: z.coerce
+      .number()
+      .int()
+      .min(1024)
+      .max(50 * 1024 * 1024)
+      .default(10 * 1024 * 1024),
+    /** Захист від «піксельних бомб»: максимальна кількість пікселів оригіналу. */
+    MEDIA_MAX_PIXELS: z.coerce.number().int().min(10_000).max(100_000_000).default(40_000_000),
   })
   .superRefine((env, ctx) => {
     if (!Object.hasOwn(env.DATA_ENCRYPTION_KEYS, env.DATA_ENCRYPTION_ACTIVE_KEY_ID)) {
@@ -88,7 +125,34 @@ export const envSchema = z
       });
     }
 
+    if (env.STORAGE_DRIVER === 's3') {
+      for (const name of ['S3_ACCESS_KEY_ID', 'S3_SECRET_ACCESS_KEY'] as const) {
+        if (env[name] === undefined) {
+          ctx.addIssue({
+            code: 'custom',
+            path: [name],
+            message: 'is required when STORAGE_DRIVER=s3',
+          });
+        }
+      }
+    }
+
     if (env.NODE_ENV !== 'production') return;
+
+    if (env.STORAGE_DRIVER !== 's3') {
+      ctx.addIssue({
+        code: 'custom',
+        path: ['STORAGE_DRIVER'],
+        message: 'must be "s3" in production',
+      });
+    }
+    if (env.MALWARE_SCANNER !== 'clamav') {
+      ctx.addIssue({
+        code: 'custom',
+        path: ['MALWARE_SCANNER'],
+        message: 'must be "clamav" in production',
+      });
+    }
 
     if (env.THROTTLE_DISABLED) {
       ctx.addIssue({
@@ -127,6 +191,7 @@ export const envSchema = z
       COOKIE_SECRET: env.COOKIE_SECRET,
       GOOGLE_CLIENT_ID: env.GOOGLE_CLIENT_ID,
       GOOGLE_CLIENT_SECRET: env.GOOGLE_CLIENT_SECRET,
+      S3_SECRET_ACCESS_KEY: env.S3_SECRET_ACCESS_KEY ?? '',
     };
     for (const [name, value] of Object.entries(mustBeReal)) {
       if (value.includes(PLACEHOLDER)) {

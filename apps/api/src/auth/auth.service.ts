@@ -94,6 +94,10 @@ export class AuthService {
       throw this.invalidCredentials();
     }
 
+    // Блокування адміністратором перевіряється ЛИШЕ після правильного пароля:
+    // інакше відповідь розкривала б, що акаунт існує.
+    await this.assertNotBlocked(user, ctx);
+
     if (user.failedLogins > 0 || user.lockedUntil !== null) {
       await this.users.resetLoginFailures(user.id);
     }
@@ -120,7 +124,7 @@ export class AuthService {
     if (current.expiresAt <= now) throw this.sessionExpired();
 
     const user = await this.users.findById(current.userId);
-    if (user === null) throw this.sessionExpired();
+    if (user === null || user.status === 'blocked') throw this.sessionExpired();
 
     const refreshToken = this.hashing.randomToken(48);
     const next = {
@@ -170,6 +174,7 @@ export class AuthService {
 
   /** Нова сесія для користувача, що вже пройшов перевірку (пароль або Google). */
   async startSession(user: User, ctx: ClientContext, now = new Date()): Promise<AuthResult> {
+    await this.assertNotBlocked(user, ctx);
     const { refreshToken, session: sessionInput } = this.prepareSession(ctx, now);
     const session = await this.sessions.create({ ...sessionInput, userId: user.id });
     await this.record(AUDIT.LOGIN, user.id, ctx);
@@ -224,6 +229,13 @@ export class AuthService {
       ipHash: ctx.ip === null ? null : this.hashing.ipHash(ctx.ip),
       metadata,
     });
+  }
+
+  /** Заблокований адміністратором користувач не отримує нових сесій (пароль і Google). */
+  private async assertNotBlocked(user: User, ctx: ClientContext): Promise<void> {
+    if (user.status !== 'blocked') return;
+    await this.record(AUDIT.LOGIN_BLOCKED, user.id, ctx);
+    throw new AppException(403, ERROR_CODES.ACCOUNT_BLOCKED, 'Account is blocked');
   }
 
   private invalidCredentials(): AppException {
