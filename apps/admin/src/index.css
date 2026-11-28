@@ -1,0 +1,15 @@
+@import 'tailwindcss';
+/* Класи спільних компонентів (packages/ui) теж мають потрапити в CSS. */
+@source '../../../packages/ui/src';
+
+@layer base {
+  :root {
+    color-scheme: light;
+  }
+  body {
+    @apply bg-slate-100 text-slate-900 antialiased;
+  }
+  :focus-visible {
+    @apply outline-2 outline-offset-2 outline-indigo-600;
+  }
+}
