@@ -9,6 +9,8 @@ onlyBuiltDependencies:
   - esbuild
   - better-sqlite3
   - argon2
+  # Етап 14.6: обробка зображень (нативний libvips)
+  - sharp
   - '@prisma/client'
   - '@prisma/engines'
   - prisma
