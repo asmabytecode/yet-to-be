@@ -65,48 +65,35 @@ export function missingEnvLines(existingText, exampleText, { ci = false } = {}) 
 
 /**
  * Створює файл, якщо його ще немає; в наявний лише дописує нові змінні.
- * Файл відкривається один раз і далі читається й дописується через той самий дескриптор:
- * між «перевірили» і «записали» його не можна підмінити (без гонки check-then-use).
+ * Файл відкривається рівно один раз ('a+': створити з правами 600, якщо немає, інакше відкрити
+ * наявний) і далі читається й дописується через той самий дескриптор — без окремої перевірки
+ * існування, тож між «перевірили» і «записали» його не можна підмінити.
  */
 export function createEnvFile({ rootDir, ci = false }) {
   const target = resolve(rootDir, ci ? '.env.test' : '.env');
   const example = readFileSync(resolve(rootDir, '.env.example'), 'utf8');
 
-  let fd;
+  const fd = openSync(target, 'a+', 0o600);
   try {
-    // 'wx' — створити лише якщо файлу немає (атомарно), одразу з правами 600.
-    fd = openSync(target, 'wx', 0o600);
-  } catch (error) {
-    if (error?.code !== 'EEXIST') throw error;
-    fd = null;
-  }
-
-  if (fd !== null) {
-    try {
+    const existing = readFileSync(fd, 'utf8');
+    // Порожній файл (щойно створений або порожній) — заповнюємо повністю.
+    if (existing.trim() === '') {
       writeFileSync(fd, generateEnvContent(example, { ci }));
-    } finally {
-      closeSync(fd);
+      return { created: true, path: target, added: [] };
     }
-    return { created: true, path: target, added: [] };
-  }
-
-  // 'a+' — читання з початку й запис лише в кінець того самого відкритого файлу.
-  const existingFd = openSync(target, 'a+');
-  try {
-    const existing = readFileSync(existingFd, 'utf8');
     const lines = missingEnvLines(existing, example, { ci });
     if (lines.length > 0) {
-      const separator = existing === '' || existing.endsWith('\n') ? '' : '\n';
+      const separator = existing.endsWith('\n') ? '' : '\n';
       const block = [
         '',
         '# ---- Додано pnpm secrets:generate (нові змінні з .env.example) ----',
         ...lines,
       ];
-      writeFileSync(existingFd, `${separator}${block.join('\n')}\n`);
+      writeFileSync(fd, `${separator}${block.join('\n')}\n`);
     }
     return { created: false, path: target, added: lines.map((line) => NAME_RE.exec(line)?.[1]) };
   } finally {
-    closeSync(existingFd);
+    closeSync(fd);
   }
 }
 
