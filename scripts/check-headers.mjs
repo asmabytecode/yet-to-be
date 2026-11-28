@@ -45,9 +45,17 @@ export function checkHeaders(headers, rules) {
 }
 
 /** Знаходить шлях першого JS-бандла в index.html, щоб перевірити заголовки статики. */
-export function firstAssetPath(html) {
-  return /src="(\/assets\/[^"]+\.js)"/.exec(html)?.[1] ?? null;
+const ASSET_PATTERNS = {
+  '': /src="(\/assets\/[^"]+\.js)"/,
+  '/admin': /src="(\/admin\/assets\/[^"]+\.js)"/,
+};
+
+/** @param {string} html @param {'' | '/admin'} [prefix] застосунок: сайт або адмінка */
+export function firstAssetPath(html, prefix = '') {
+  return ASSET_PATTERNS[prefix].exec(html)?.[1] ?? null;
 }
+
+const NOINDEX = { 'x-robots-tag': (v) => v.includes('noindex') };
 
 async function run(baseUrl) {
   const report = [];
@@ -80,6 +88,36 @@ async function run(baseUrl) {
   // SPA-фолбек теж має всі заголовки.
   const deep = await get('/profile');
   report.push(['/profile', checkHeaders(deep.headers, REQUIRED_SPA)]);
+
+  // Адмінка: ті самі заголовки + noindex; глибокі посилання віддають index.html адмінки.
+  const admin = await get('/admin/');
+  const adminHtml = await admin.text();
+  report.push([
+    '/admin/',
+    checkHeaders(admin.headers, {
+      ...REQUIRED_SPA,
+      ...NOINDEX,
+      'cache-control': (v) => v.includes('no-store'),
+    }),
+  ]);
+  const adminAsset = firstAssetPath(adminHtml, '/admin');
+  if (adminAsset === null) {
+    report.push(['/admin/assets/*', ['no /admin/assets/*.js script found in admin index.html']]);
+  } else {
+    const res = await get(adminAsset);
+    report.push([
+      adminAsset,
+      checkHeaders(res.headers, {
+        ...REQUIRED_SPA,
+        'cache-control': (v) => v.includes('immutable'),
+      }),
+    ]);
+  }
+  const adminDeep = await get('/admin/events/new');
+  const adminDeepProblems = checkHeaders(adminDeep.headers, { ...REQUIRED_SPA, ...NOINDEX });
+  if (!(await adminDeep.text()).includes('/admin/assets/'))
+    adminDeepProblems.push('deep link must serve the admin index.html');
+  report.push(['/admin/events/new', adminDeepProblems]);
 
   const health = await get('/api/v1/health');
   const healthProblems = checkHeaders(health.headers, REQUIRED_API);

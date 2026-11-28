@@ -40,4 +40,11 @@ describe('firstAssetPath', () => {
   it('returns null when there is no bundle', () => {
     expect(firstAssetPath('<html></html>')).toBeNull();
   });
+
+  it('finds the admin bundle only under /admin/assets', () => {
+    const html = '<script type="module" src="/admin/assets/index-Xy9.js"></script>';
+    expect(firstAssetPath(html, '/admin')).toBe('/admin/assets/index-Xy9.js');
+    expect(firstAssetPath(html)).toBeNull();
+    expect(firstAssetPath('<script src="/assets/index-1.js"></script>', '/admin')).toBeNull();
+  });
 });

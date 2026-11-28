@@ -27,3 +27,4 @@ apps/api/data
 .idea
 .verify
 **/*.log
+**/.e2e-state

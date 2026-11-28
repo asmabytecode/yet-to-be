@@ -13,6 +13,7 @@ const EXAMPLE = [
   'BLIND_INDEX_KEY=change-me-base64-32-bytes',
   'GOOGLE_CLIENT_ID=change-me.apps.googleusercontent.com',
   'GOOGLE_CLIENT_SECRET=change-me',
+  'S3_SECRET_ACCESS_KEY=change-me',
   '# comment',
 ].join('\n');
 
@@ -43,6 +44,12 @@ describe('generateEnvContent', () => {
 
     expect(env.NODE_ENV).toBe('development');
     expect(generateEnvContent(EXAMPLE)).toContain('# comment');
+  });
+
+  it('generates a hex secret for the API storage user', () => {
+    const env = parse(generateEnvContent(EXAMPLE));
+
+    expect(env.S3_SECRET_ACCESS_KEY).toMatch(/^[0-9a-f]{64}$/);
   });
 
   it('leaves Google placeholders alone outside CI', () => {
@@ -92,12 +99,30 @@ describe('createEnvFile', () => {
     expect(existsSync(join(dir, '.env'))).toBe(false);
   });
 
-  it('never overwrites an existing .env', () => {
-    writeFileSync(join(dir, '.env'), 'KEEP=me');
+  it('never overwrites existing values, only appends variables missing from .env', () => {
+    writeFileSync(join(dir, '.env'), 'NODE_ENV=production\nPASSWORD_PEPPER=keep-me');
+
+    const result = createEnvFile({ rootDir: dir });
+    const text = readFileSync(join(dir, '.env'), 'utf8');
+    const env = parse(text);
+
+    expect(result.created).toBe(false);
+    expect(text.startsWith('NODE_ENV=production\nPASSWORD_PEPPER=keep-me\n')).toBe(true);
+    expect(env.NODE_ENV).toBe('production');
+    expect(env.PASSWORD_PEPPER).toBe('keep-me');
+    expect(text.match(/^PASSWORD_PEPPER=/gm)).toHaveLength(1);
+    expect(env.S3_SECRET_ACCESS_KEY).toMatch(/^[0-9a-f]{64}$/);
+    expect(result.added).toContain('S3_SECRET_ACCESS_KEY');
+    expect(result.added).not.toContain('PASSWORD_PEPPER');
+  });
+
+  it('leaves an up-to-date .env untouched', () => {
+    createEnvFile({ rootDir: dir });
+    const before = readFileSync(join(dir, '.env'), 'utf8');
 
     const result = createEnvFile({ rootDir: dir });
 
-    expect(result.created).toBe(false);
-    expect(readFileSync(join(dir, '.env'), 'utf8')).toBe('KEEP=me');
+    expect(result.added).toEqual([]);
+    expect(readFileSync(join(dir, '.env'), 'utf8')).toBe(before);
   });
 });
