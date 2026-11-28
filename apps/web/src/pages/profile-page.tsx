@@ -1,5 +1,6 @@
 import { useTranslation } from 'react-i18next';
 import { useSession } from '../features/auth/use-session';
+import { MyRegistrations } from '../features/events/my-registrations';
 import { LinkedAccounts } from '../features/profile/linked-accounts';
 import { PasswordForm } from '../features/profile/password-form';
 import { ProfileForm } from '../features/profile/profile-form';
@@ -19,6 +20,12 @@ export function ProfilePage() {
           {t('profile.data')}
         </h2>
         <ProfileForm key={user.id} user={user} />
+      </Card>
+      <Card aria-labelledby="profile-registrations">
+        <h2 id="profile-registrations" className="mb-4 text-lg font-semibold">
+          {t('events.mine')}
+        </h2>
+        <MyRegistrations />
       </Card>
       <Card aria-labelledby="profile-password">
         <h2 id="profile-password" className="mb-4 text-lg font-semibold">

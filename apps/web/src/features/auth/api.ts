@@ -1,4 +1,4 @@
-import type { LoginInput, RegisterInput, UserDto } from '@yet-to-be/shared';
+import type { AccessDto, LoginInput, RegisterInput, UserDto } from '@yet-to-be/shared';
 import { ApiError, request } from '../../shared/api/http';
 
 export const authApi = {
@@ -11,6 +11,21 @@ export const authApi = {
       return user;
     } catch (error) {
       if (error instanceof ApiError && error.status === 401) return null;
+      throw error;
+    }
+  },
+  /**
+   * Чи є в користувача хоч одна роль адмінки — лише щоб показати посилання «Адмінка».
+   * Доступ однаково перевіряє сервер на кожному запиті.
+   */
+  async isTeamMember(): Promise<boolean> {
+    try {
+      const { access } = await request<{ access?: AccessDto }>('/auth/session', {
+        onUnauthorized: 'ignore',
+      });
+      return (access?.roles.length ?? 0) > 0;
+    } catch (error) {
+      if (error instanceof ApiError && error.status === 401) return false;
       throw error;
     }
   },

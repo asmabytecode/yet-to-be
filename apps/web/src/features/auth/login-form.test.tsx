@@ -56,4 +56,10 @@ describe('LoginForm', () => {
     renderApp('/login?error=oauth_failed');
     expect(await screen.findByText(/Не вдалося увійти через Google/)).toBeInTheDocument();
   });
+
+  it('повідомляє, що акаунт заблоковано адміністратором', async () => {
+    mockSession(null);
+    renderApp('/login?error=account_blocked');
+    expect(await screen.findByText('Акаунт заблоковано адміністратором.')).toBeInTheDocument();
+  });
 });

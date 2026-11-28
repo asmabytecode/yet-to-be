@@ -8,6 +8,16 @@ export function useSession() {
   return useQuery({ queryKey: SESSION_KEY, queryFn: () => authApi.session(), staleTime: 60_000 });
 }
 
+/** Чи показувати посилання на адмінку. Ключ залежить від користувача: після входу — новий запит. */
+export function useIsTeamMember(userId: string | undefined) {
+  return useQuery({
+    queryKey: ['team-member', userId],
+    queryFn: () => authApi.isTeamMember(),
+    enabled: userId !== undefined,
+    staleTime: 60_000,
+  });
+}
+
 /** Скидає весь клієнтський кеш і робить користувача гостем (вихід, кінець сесії). */
 export function useEndSession(): () => void {
   const client = useQueryClient();

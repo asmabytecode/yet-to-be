@@ -33,10 +33,10 @@ export const routes: RouteObject[] = [
         ],
       },
       {
-        element: <ProtectedRoute />,
+        element: <AppLayout />,
         children: [
           {
-            element: <AppLayout />,
+            element: <ProtectedRoute />,
             children: [
               {
                 path: '/',
@@ -49,6 +49,15 @@ export const routes: RouteObject[] = [
                 }),
               },
             ],
+          },
+          // Події відкриті й для гостей; записатися можна лише після входу.
+          {
+            path: '/events',
+            lazy: async () => ({ Component: (await import('../pages/events-page')).EventsPage }),
+          },
+          {
+            path: '/events/:slug',
+            lazy: async () => ({ Component: (await import('../pages/event-page')).EventPage }),
           },
         ],
       },
